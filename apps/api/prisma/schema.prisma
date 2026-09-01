@@ -1,0 +1,416 @@
+// Prisma schema — Sistema de Remuneraciones y Gestión de Personas (Chile)
+// docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Auth / usuarios del sistema
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  RRHH
+  EMPLOYEE
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         UserRole  @default(EMPLOYEE)
+  isActive     Boolean   @default(true)
+  employee     Employee? @relation(fields: [employeeId], references: [id])
+  employeeId   String?   @unique
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Estructura organizacional
+// ---------------------------------------------------------------------------
+
+model Department {
+  id           String       @id @default(cuid())
+  name         String
+  parent       Department?  @relation("DepartmentToParent", fields: [parentId], references: [id])
+  parentId     String?
+  children     Department[] @relation("DepartmentToParent")
+  positions    Position[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Position {
+  id           String     @id @default(cuid())
+  title        String
+  department   Department @relation(fields: [departmentId], references: [id])
+  departmentId String
+  contracts    Contract[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Personas / trabajadores
+// ---------------------------------------------------------------------------
+
+enum EmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  TERMINATED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  UNSPECIFIED
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+  CIVIL_UNION
+}
+
+model Employee {
+  id             String          @id @default(cuid())
+
+  // Identificación
+  documentType   String          @db.VarChar(20) // tipo_documento: RUT, PASAPORTE, DNI, etc.
+  documentNumber String          @db.VarChar(30) // numero_documento: valor del documento tal como fue ingresado
+  rut            String?         @unique @db.VarChar(12) // condicional: solo cuando documentType = RUT, formato 12.345.678-9
+
+  firstName      String
+  lastName       String
+  secondLastName String?
+  socialName     String?         @db.VarChar(150) // nombre_social
+  birthDate      DateTime?
+  gender         Gender          @default(UNSPECIFIED)
+  maritalStatus  MaritalStatus?
+  nationality    String?         @default("Chilena")
+  birthCountry   String?         @db.VarChar(80) // pais_nacimiento
+  birthRegion    String?         @db.VarChar(80) // region_nacimiento
+  birthCommune   String?         @db.VarChar(80) // comuna_nacimiento
+  photoUrl       String?         @db.VarChar(500) // fotografia_url
+
+  email          String?         @unique
+  phone          String?
+  address        String?
+  commune        String?
+  region         String?
+  bankName       String?
+  bankAccountType String?
+  bankAccountNumber String?
+
+  status         EmployeeStatus  @default(ACTIVE)
+
+  // AFP, salud y ahorro previsional ya no son atributos fijos del empleado:
+  // son datos con vigencia histórica, ver EmployeeAfp / HealthAffiliation / EmployeePensionSaving.
+  afpAffiliations     EmployeeAfp[]
+  healthAffiliations  HealthAffiliation[]
+  pensionSavings      EmployeePensionSaving[]
+
+  contracts      Contract[]
+  leaves         Leave[]
+  payslips       Payslip[]
+  user           User?
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Contratos
+// ---------------------------------------------------------------------------
+
+enum ContractType {
+  INDEFINIDO
+  PLAZO_FIJO
+  POR_OBRA_O_FAENA
+  HONORARIOS
+}
+
+model Contract {
+  id            String       @id @default(cuid())
+  employee      Employee     @relation(fields: [employeeId], references: [id])
+  employeeId    String
+  position      Position     @relation(fields: [positionId], references: [id])
+  positionId    String
+  type          ContractType
+  startDate     DateTime
+  endDate       DateTime?
+  baseSalary    Decimal      @db.Decimal(12, 2) // sueldo base mensual, CLP
+  weeklyHours   Int          @default(45)
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Ausentismo (vacaciones, licencias)
+// ---------------------------------------------------------------------------
+
+enum LeaveType {
+  VACATION
+  SICK_LEAVE
+  PARENTAL
+  UNPAID
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Leave {
+  id         String      @id @default(cuid())
+  employee   Employee    @relation(fields: [employeeId], references: [id])
+  employeeId String
+  type       LeaveType
+  status     LeaveStatus @default(PENDING)
+  startDate  DateTime
+  endDate    DateTime
+  days       Int
+  reason     String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Catálogos previsionales (Chile)
+// ---------------------------------------------------------------------------
+
+model AfpEntity {
+  id           String     @id @default(cuid())
+  name         String     @unique // ej. "Capital", "Cuprum", "Habitat", "Modelo", "PlanVital", "ProVida", "Uno"
+  workerRate   Decimal    @db.Decimal(5, 2) // % total cotización trabajador (10% + comisión), referencial para el catálogo
+  isActive     Boolean    @default(true)
+
+  affiliations       EmployeeAfp[]
+  pensionSavings     EmployeePensionSaving[] // también puede ser la institución de un producto voluntario (APV/CAV/etc.)
+}
+
+enum HealthInstitutionType {
+  FONASA
+  ISAPRE
+}
+
+model HealthInstitution {
+  id          String                @id @default(cuid())
+  name        String                @unique // "Fonasa", "Banmédica", "Colmena", "Cruz Blanca", etc.
+  type        HealthInstitutionType
+  isActive    Boolean               @default(true)
+
+  affiliations HealthAffiliation[]
+}
+
+enum AffiliationStatus {
+  ACTIVE
+  FINISHED
+  PENDING
+}
+
+// Afiliación previsional obligatoria del trabajador a una AFP, con vigencia histórica.
+// No se sobrescribe al cambiar de AFP: se cierra effectiveTo del registro anterior y se
+// crea uno nuevo, para poder recalcular liquidaciones históricas con los datos correctos
+// del período (AFP, comisión, fondo, etc. vigentes en ese momento).
+model EmployeeAfp {
+  id         String   @id @default(cuid())
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+  afp        AfpEntity @relation(fields: [afpId], references: [id])
+  afpId      String
+
+  affiliationDate DateTime // fecha_afiliacion_sistema: primera afiliación de la persona al sistema de AFP
+  afpJoinDate     DateTime // fecha_incorporacion_afp: fecha en que se incorporó a esta AFP en particular
+  effectiveFrom   DateTime // desde cuándo se usa esta AFP para el cálculo de remuneraciones
+  effectiveTo     DateTime? // null mientras esté vigente
+
+  status     AffiliationStatus @default(ACTIVE)
+  fundType   String?  @db.Char(1) // tipo_fondo: A/B/C/D/E
+
+  mandatoryContributionPct  Decimal  @db.Decimal(6, 3) @default(10.000) // cotización obligatoria, ley
+  afpCommissionPct          Decimal? @db.Decimal(6, 3) // comisión de la AFP vigente al momento de esta afiliación
+  additionalContributionPct Decimal? @db.Decimal(6, 3) // cotización adicional, si corresponde
+
+  heavyWork    Boolean  @default(false) // trabajo pesado
+  heavyWorkPct Decimal? @db.Decimal(5, 2) // 2.00 / 4.00
+
+  notes      String?  @db.VarChar(500)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+enum PensionProductType {
+  APV                   // Ahorro Previsional Voluntario
+  CAV                   // Cuenta de Ahorro Voluntario (Cuenta 2)
+  COTIZACION_VOLUNTARIA
+  DEPOSITO_CONVENIDO
+}
+
+enum ContributionMode {
+  MONTO
+  PORCENTAJE
+}
+
+enum PensionSavingStatus {
+  ACTIVE
+  SUSPENDED
+  FINISHED
+}
+
+// Productos de ahorro previsional voluntario, independientes de la afiliación obligatoria.
+// Un trabajador puede tener más de uno simultáneamente (ej. APV + Cuenta 2), incluso en
+// una institución distinta de su AFP de afiliación obligatoria.
+model EmployeePensionSaving {
+  id             String   @id @default(cuid())
+  employee       Employee @relation(fields: [employeeId], references: [id])
+  employeeId     String
+  productType    PensionProductType
+  institution    AfpEntity @relation(fields: [institutionId], references: [id])
+  institutionId  String
+
+  taxRegime        String?  @db.Char(1) // A/B, solo aplica a APV
+  contributionMode ContributionMode
+  amount           Decimal? @db.Decimal(15, 2) // si contributionMode = MONTO
+  percentage       Decimal? @db.Decimal(7, 4) // si contributionMode = PORCENTAJE
+  currency         String?  @db.VarChar(10) @default("CLP")
+  fundType         String?  @db.Char(1)
+
+  effectiveFrom    DateTime
+  effectiveTo      DateTime?
+  status           PensionSavingStatus @default(ACTIVE)
+  payrollDeduction Boolean  @default(true) // descuento por planilla
+  contractNumber   String?  @db.VarChar(50)
+  notes            String?  @db.VarChar(500)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// Afiliación de salud (Fonasa/Isapre) del trabajador, también con vigencia histórica:
+// se registra la fecha en que la persona cambió de institución o de plan.
+model HealthAffiliation {
+  id                  String            @id @default(cuid())
+  employee            Employee          @relation(fields: [employeeId], references: [id])
+  employeeId          String
+  healthInstitution   HealthInstitution @relation(fields: [healthInstitutionId], references: [id])
+  healthInstitutionId String
+
+  planUfValue   Decimal? @db.Decimal(10, 4) // valor del plan en UF, si es Isapre
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        AffiliationStatus @default(ACTIVE)
+  notes         String?  @db.VarChar(500)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Tabla de impuesto único de segunda categoría (tramos en UTM)
+model TaxBracket {
+  id          String   @id @default(cuid())
+  validFrom   DateTime // vigencia del tramo, para permitir historicidad de la tabla del SII
+  fromUtm     Decimal  @db.Decimal(10, 4)
+  toUtm       Decimal? @db.Decimal(10, 4) // null = sin tope (tramo superior)
+  factor      Decimal  @db.Decimal(6, 4) // factor de cálculo
+  deductionUtm Decimal @db.Decimal(10, 4) // cantidad a rebajar, en UTM
+}
+
+// Indicadores económicos mensuales requeridos para el cálculo de remuneraciones
+model EconomicIndicator {
+  id             String   @id @default(cuid())
+  period         DateTime // primer día del mes al que aplica, ej. 2026-09-01
+  ufValue        Decimal  @db.Decimal(10, 2) // valor UF usado para el cálculo del período
+  utmValue       Decimal  @db.Decimal(10, 2)
+  minWage        Decimal  @db.Decimal(10, 2) // ingreso mínimo mensual
+  afpHealthCapUf Decimal  @db.Decimal(10, 2) // tope imponible AFP/salud del período, en UF (verificar valor vigente en Previred)
+
+  @@unique([period])
+}
+
+// ---------------------------------------------------------------------------
+// Remuneraciones
+// ---------------------------------------------------------------------------
+
+enum PayrollPeriodStatus {
+  OPEN
+  CALCULATED
+  CLOSED
+  PAID
+}
+
+model PayrollPeriod {
+  id        String              @id @default(cuid())
+  month     Int // 1-12
+  year      Int
+  status    PayrollPeriodStatus @default(OPEN)
+  payslips  Payslip[]
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([month, year])
+}
+
+enum ConceptType {
+  EARNING // haber
+  DEDUCTION // descuento
+}
+
+enum ConceptCategory {
+  TAXABLE // imponible y tributable
+  NON_TAXABLE // no imponible (ej. colación, movilización)
+  LEGAL_DEDUCTION // descuento legal (AFP, salud, AFC, impuesto)
+  OTHER_DEDUCTION // descuento voluntario/otro
+}
+
+model PayrollConcept {
+  id        String          @id @default(cuid())
+  code      String          @unique // ej. "SUELDO_BASE", "GRATIFICACION", "AFP", "SALUD", "AFC", "IMPUESTO_UNICO"
+  name      String
+  type      ConceptType
+  category  ConceptCategory
+  isSystem  Boolean         @default(false) // conceptos calculados automáticamente por el sistema
+  items     PayslipItem[]
+}
+
+model Payslip {
+  id              String        @id @default(cuid())
+  employee        Employee      @relation(fields: [employeeId], references: [id])
+  employeeId      String
+  period          PayrollPeriod @relation(fields: [periodId], references: [id])
+  periodId        String
+
+  totalEarnings   Decimal       @db.Decimal(12, 2) @default(0)
+  totalDeductions Decimal       @db.Decimal(12, 2) @default(0)
+  netPay          Decimal       @db.Decimal(12, 2) @default(0)
+
+  items           PayslipItem[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([employeeId, periodId])
+}
+
+model PayslipItem {
+  id         String         @id @default(cuid())
+  payslip    Payslip        @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  payslipId  String
+  concept    PayrollConcept @relation(fields: [conceptId], references: [id])
+  conceptId  String
+  amount     Decimal        @db.Decimal(12, 2)
+}
