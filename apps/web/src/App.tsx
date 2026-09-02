@@ -18,6 +18,7 @@ import { LeavesPage } from './pages/LeavesPage';
 import { PayrollPeriodsPage } from './pages/PayrollPeriodsPage';
 import { PayrollPeriodDetailPage } from './pages/PayrollPeriodDetailPage';
 import { CatalogsPage } from './pages/CatalogsPage';
+import { PlaceholderPage } from './pages/PlaceholderPage';
 
 export default function App() {
   return (
@@ -81,6 +82,70 @@ export default function App() {
             <Route path="/payroll-periods" element={<PayrollPeriodsPage />} />
             <Route path="/payroll-periods/:id" element={<PayrollPeriodDetailPage />} />
             <Route path="/catalogs" element={<CatalogsPage />} />
+            <Route
+              path="/earnings-imputation"
+              element={
+                <RequireRole roles={['ADMIN']}>
+                  <PlaceholderPage title="Imputación de Haberes" />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/deductions-imputation"
+              element={
+                <RequireRole roles={['ADMIN']}>
+                  <PlaceholderPage title="Imputación de Descuentos" />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/concept-creation"
+              element={
+                <RequireRole roles={['ADMIN']}>
+                  <PlaceholderPage title="Creación de Conceptos" />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/calculation-process"
+              element={
+                <RequireRole roles={['ADMIN']}>
+                  <PlaceholderPage title="Proceso de Cálculo" />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/consistency-tests"
+              element={
+                <RequireRole roles={['ADMIN']}>
+                  <PlaceholderPage title="Test de Consistencias" />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/previred-file"
+              element={
+                <RequireRole roles={['ADMIN']}>
+                  <PlaceholderPage title="Genera Archivo Previred" />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/social-credits"
+              element={
+                <RequireRole roles={['ADMIN']}>
+                  <PlaceholderPage title="Créditos Sociales" />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/attendance-records"
+              element={
+                <RequireRole roles={['ADMIN']}>
+                  <PlaceholderPage title="Reg. Atrasos e Inasistencia" />
+                </RequireRole>
+              }
+            />
           </Route>
         </Routes>
       </AuthProvider>
