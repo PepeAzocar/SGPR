@@ -34,27 +34,184 @@ model User {
 
 // ---------------------------------------------------------------------------
 // Estructura organizacional
+//
+// Jerarquía: LegalEntity -> BusinessUnit -> Division -> Department -> Position.
+// CostCenter es un maestro independiente (dimensión de imputación financiera):
+// puede colgar directamente de una LegalEntity y ser referenciado desde
+// Department y/o Position, sin ser un nivel rígido de la jerarquía.
+// Cargo es la clasificación reutilizable del puesto (título/rol genérico);
+// Position es el asiento concreto dentro de un Department que ocupa un Cargo.
+//
+// Los campos code/effectiveFrom/effectiveTo/status en Department y Position
+// son opcionales a nivel de base de datos por compatibilidad con registros
+// creados antes de esta estructura; los DTO de creación los exigen para
+// registros nuevos.
 // ---------------------------------------------------------------------------
 
+enum OrgUnitStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model LegalEntity {
+  id            String        @id @default(cuid())
+  code          String        @unique @db.VarChar(50)
+  name          String        @db.VarChar(150)
+  description   String?       @db.VarChar(500)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        OrgUnitStatus @default(ACTIVE)
+
+  businessUnits BusinessUnit[]
+  costCenters   CostCenter[]
+
+  createdBy     String?       @db.VarChar(150)
+  updatedBy     String?       @db.VarChar(150)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model BusinessUnit {
+  id            String        @id @default(cuid())
+  code          String        @unique @db.VarChar(50)
+  name          String        @db.VarChar(150)
+  description   String?       @db.VarChar(500)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        OrgUnitStatus @default(ACTIVE)
+
+  legalEntity   LegalEntity   @relation(fields: [legalEntityId], references: [id])
+  legalEntityId String
+
+  divisions     Division[]
+
+  createdBy     String?       @db.VarChar(150)
+  updatedBy     String?       @db.VarChar(150)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Division {
+  id              String        @id @default(cuid())
+  code            String        @unique @db.VarChar(50)
+  name            String        @db.VarChar(150)
+  description     String?       @db.VarChar(500)
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+  status          OrgUnitStatus @default(ACTIVE)
+
+  businessUnit    BusinessUnit  @relation(fields: [businessUnitId], references: [id])
+  businessUnitId  String
+
+  parent          Division?     @relation("DivisionToParent", fields: [parentDivisionId], references: [id])
+  parentDivisionId String?
+  children        Division[]    @relation("DivisionToParent")
+
+  departments     Department[]
+
+  createdBy       String?       @db.VarChar(150)
+  updatedBy       String?       @db.VarChar(150)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model CostCenter {
+  id            String        @id @default(cuid())
+  code          String        @unique @db.VarChar(50)
+  name          String        @db.VarChar(150)
+  description   String?       @db.VarChar(500)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        OrgUnitStatus @default(ACTIVE)
+
+  legalEntity   LegalEntity?  @relation(fields: [legalEntityId], references: [id])
+  legalEntityId String?
+
+  parent        CostCenter?   @relation("CostCenterToParent", fields: [parentId], references: [id])
+  parentId      String?
+  children      CostCenter[]  @relation("CostCenterToParent")
+
+  manager           Employee? @relation("CostCenterManager", fields: [managerEmployeeId], references: [id])
+  managerEmployeeId String?
+
+  departments   Department[]
+  positions     Position[]
+
+  createdBy     String?       @db.VarChar(150)
+  updatedBy     String?       @db.VarChar(150)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+// Clasificación de puesto reutilizable (ej. "Analista de Remuneraciones",
+// "Jefe de Departamento"), independiente del asiento concreto (Position).
+model Cargo {
+  id            String        @id @default(cuid())
+  code          String        @unique @db.VarChar(50)
+  name          String        @db.VarChar(150)
+  description   String?       @db.VarChar(500)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        OrgUnitStatus @default(ACTIVE)
+
+  positions     Position[]
+
+  createdBy     String?       @db.VarChar(150)
+  updatedBy     String?       @db.VarChar(150)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
 model Department {
-  id           String       @id @default(cuid())
-  name         String
-  parent       Department?  @relation("DepartmentToParent", fields: [parentId], references: [id])
-  parentId     String?
-  children     Department[] @relation("DepartmentToParent")
-  positions    Position[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id            String         @id @default(cuid())
+  code          String?        @unique @db.VarChar(50)
+  name          String
+  description   String?        @db.VarChar(500)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  status        OrgUnitStatus  @default(ACTIVE)
+
+  division      Division?      @relation(fields: [divisionId], references: [id])
+  divisionId    String?
+
+  costCenter    CostCenter?    @relation(fields: [costCenterId], references: [id])
+  costCenterId  String?
+
+  parent        Department?    @relation("DepartmentToParent", fields: [parentId], references: [id])
+  parentId      String?
+  children      Department[]   @relation("DepartmentToParent")
+  positions     Position[]
+
+  createdBy     String?        @db.VarChar(150)
+  updatedBy     String?        @db.VarChar(150)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model Position {
-  id           String     @id @default(cuid())
-  title        String
-  department   Department @relation(fields: [departmentId], references: [id])
-  departmentId String
-  contracts    Contract[]
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id            String        @id @default(cuid())
+  code          String?       @unique @db.VarChar(50)
+  title         String
+  description   String?       @db.VarChar(500)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  status        OrgUnitStatus @default(ACTIVE)
+
+  department    Department    @relation(fields: [departmentId], references: [id])
+  departmentId  String
+
+  cargo         Cargo?        @relation(fields: [cargoId], references: [id])
+  cargoId       String?
+
+  costCenter    CostCenter?   @relation(fields: [costCenterId], references: [id])
+  costCenterId  String?
+
+  contracts     Contract[]
+
+  createdBy     String?       @db.VarChar(150)
+  updatedBy     String?       @db.VarChar(150)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }
 
 // ---------------------------------------------------------------------------
@@ -124,6 +281,7 @@ model Employee {
   leaves         Leave[]
   payslips       Payslip[]
   user           User?
+  managedCostCenters CostCenter[] @relation("CostCenterManager")
 
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -193,10 +351,12 @@ model Leave {
 // ---------------------------------------------------------------------------
 
 model AfpEntity {
-  id           String     @id @default(cuid())
-  name         String     @unique // ej. "Capital", "Cuprum", "Habitat", "Modelo", "PlanVital", "ProVida", "Uno"
-  workerRate   Decimal    @db.Decimal(5, 2) // % total cotización trabajador (10% + comisión), referencial para el catálogo
-  isActive     Boolean    @default(true)
+  id            String     @id @default(cuid())
+  name          String     @unique // ej. "Capital", "Cuprum", "Habitat", "Modelo", "PlanVital", "ProVida", "Uno"
+  workerRate    Decimal    @db.Decimal(5, 2) // % total cotización trabajador (10% + comisión), referencial para el catálogo
+  isActive      Boolean    @default(true)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
 
   affiliations       EmployeeAfp[]
   pensionSavings     EmployeePensionSaving[] // también puede ser la institución de un producto voluntario (APV/CAV/etc.)
@@ -208,12 +368,63 @@ enum HealthInstitutionType {
 }
 
 model HealthInstitution {
-  id          String                @id @default(cuid())
-  name        String                @unique // "Fonasa", "Banmédica", "Colmena", "Cruz Blanca", etc.
-  type        HealthInstitutionType
-  isActive    Boolean               @default(true)
+  id            String                @id @default(cuid())
+  name          String                @unique // "Fonasa", "Banmédica", "Colmena", "Cruz Blanca", etc.
+  type          HealthInstitutionType
+  isActive      Boolean               @default(true)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
 
   affiliations HealthAffiliation[]
+}
+
+// Mutualidad de empleadores (Ley 16.744): ACHS, IST, Mutual de Seguridad, etc.
+// La tasa adicional diferenciada NO vive aquí: depende de la empresa y su
+// evaluación de siniestralidad (D.S. 67), por lo que se modelará en una tabla
+// de afiliación empresa-mutualidad separada, en una etapa posterior.
+model Mutuality {
+  id            String    @id @default(cuid())
+  code          String    @unique @db.VarChar(20)
+  rut           String    @db.VarChar(12)
+  legalName     String    @db.VarChar(150) // razón social
+  tradeName     String?   @db.VarChar(100) // nombre de fantasía
+  address       String?   @db.VarChar(200)
+  phone         String?   @db.VarChar(30)
+  email         String?   @db.VarChar(150)
+  website       String?   @db.VarChar(200)
+  previredCode  String?   @db.VarChar(20)
+  isActive      Boolean   @default(true)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+
+  createdBy     String?   @db.VarChar(150)
+  updatedBy     String?   @db.VarChar(150)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Caja de Compensación de Asignación Familiar (CCAF): Los Andes, La Araucana, etc.
+// La afiliación de la empresa y los productos/créditos del trabajador se
+// modelarán en tablas separadas, en una etapa posterior.
+model Ccaf {
+  id            String    @id @default(cuid())
+  code          String    @unique @db.VarChar(20)
+  rut           String    @db.VarChar(12)
+  legalName     String    @db.VarChar(150)
+  tradeName     String?   @db.VarChar(100)
+  address       String?   @db.VarChar(200)
+  phone         String?   @db.VarChar(30)
+  email         String?   @db.VarChar(150)
+  website       String?   @db.VarChar(200)
+  previredCode  String?   @db.VarChar(20)
+  isActive      Boolean   @default(true)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+
+  createdBy     String?   @db.VarChar(150)
+  updatedBy     String?   @db.VarChar(150)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 enum AffiliationStatus {

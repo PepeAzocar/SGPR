@@ -13,6 +13,8 @@ import { CreatePositionDto } from './dto/create-position.dto.js';
 import { UpdatePositionDto } from './dto/update-position.dto.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/jwt.strategy.js';
 
 @UseGuards(RolesGuard)
 @Roles('ADMIN', 'RRHH')
@@ -21,8 +23,9 @@ export class PositionsController {
   constructor(private readonly positionsService: PositionsService) {}
 
   @Post()
-  create(@Body() dto: CreatePositionDto) {
-    return this.positionsService.create(dto);
+  @Roles('ADMIN')
+  create(@Body() dto: CreatePositionDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.positionsService.create(dto, user.email);
   }
 
   @Get()
@@ -36,11 +39,13 @@ export class PositionsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdatePositionDto) {
-    return this.positionsService.update(id, dto);
+  @Roles('ADMIN')
+  update(@Param('id') id: string, @Body() dto: UpdatePositionDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.positionsService.update(id, dto, user.email);
   }
 
   @Delete(':id')
+  @Roles('ADMIN')
   remove(@Param('id') id: string) {
     return this.positionsService.remove(id);
   }

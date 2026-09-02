@@ -1,4 +1,5 @@
-import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsDate, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class CreateAfpEntityDto {
   @IsString()
@@ -11,4 +12,13 @@ export class CreateAfpEntityDto {
 
   @IsOptional()
   isActive?: boolean;
+
+  @IsDate()
+  @Type(() => Date)
+  effectiveFrom: Date;
+
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  effectiveTo?: Date;
 }

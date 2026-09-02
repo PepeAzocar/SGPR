@@ -1,59 +1,46 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { api, ApiError } from '../api/client';
-import type { Department } from '../api/types';
+import { useAuth } from '../auth/AuthContext';
+import { OrgMaintainerPage, STATUS_OPTIONS, type ColumnConfig, type FieldConfig } from '../components/OrgMaintainer';
+
+function fmtDate(value: unknown): string {
+  return value ? new Date(String(value)).toLocaleDateString('es-CL') : '-';
+}
+
+function statusBadge(row: any) {
+  const active = row.status === 'ACTIVE';
+  return <span className={`badge ${active ? 'active' : 'terminated'}`}>{active ? 'Activo' : 'Inactivo'}</span>;
+}
+
+const columns: ColumnConfig[] = [
+  { key: 'code', label: 'Código' },
+  { key: 'name', label: 'Nombre' },
+  { key: 'division.name', label: 'División' },
+  { key: 'costCenter.name', label: 'Centro de costo' },
+  { key: 'parent.name', label: 'Departamento padre' },
+  { key: 'effectiveFrom', label: 'Vigencia desde', format: fmtDate },
+  { key: 'status', label: 'Estado', render: statusBadge },
+];
+
+const fields: FieldConfig[] = [
+  { key: 'code', label: 'Código', type: 'text', required: true, maxLength: 50 },
+  { key: 'name', label: 'Nombre', type: 'text', required: true, maxLength: 150 },
+  { key: 'description', label: 'Descripción', type: 'textarea', maxLength: 500 },
+  { key: 'divisionId', label: 'División', type: 'select', required: true, options: { resource: '/divisions' } },
+  { key: 'costCenterId', label: 'Centro de costo (opcional)', type: 'select', options: { resource: '/cost-centers' } },
+  { key: 'parentId', label: 'Departamento padre (opcional)', type: 'select', options: { resource: '/departments' } },
+  { key: 'effectiveFrom', label: 'Vigencia desde', type: 'date', required: true },
+  { key: 'effectiveTo', label: 'Vigencia hasta', type: 'date' },
+  { key: 'status', label: 'Estado', type: 'select', staticOptions: STATUS_OPTIONS },
+];
 
 export function DepartmentsPage() {
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [name, setName] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  async function load() {
-    setDepartments(await api.get<Department[]>('/departments'));
-  }
-
-  useEffect(() => {
-    load().catch((err) => setError(err instanceof ApiError ? err.message : 'Error al cargar'));
-  }, []);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    try {
-      await api.post('/departments', { name });
-      setName('');
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo crear el departamento');
-    }
-  }
-
+  const { user } = useAuth();
   return (
-    <div>
-      <h1>Departamentos</h1>
-      {error && <p className="error">{error}</p>}
-      <form className="card inline-form" onSubmit={handleSubmit}>
-        <input placeholder="Nombre del departamento" value={name} onChange={(e) => setName(e.target.value)} required />
-        <button type="submit">Agregar</button>
-      </form>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Nombre</th>
-          </tr>
-        </thead>
-        <tbody>
-          {departments.map((d) => (
-            <tr key={d.id}>
-              <td>{d.name}</td>
-            </tr>
-          ))}
-          {departments.length === 0 && (
-            <tr>
-              <td className="empty">Sin departamentos registrados.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <OrgMaintainerPage
+      title="Departamentos"
+      resource="/departments"
+      columns={columns}
+      fields={fields}
+      canWrite={user?.role === 'ADMIN'}
+    />
   );
 }

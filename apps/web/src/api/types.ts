@@ -1,14 +1,95 @@
+export type OrgUnitStatus = 'ACTIVE' | 'INACTIVE';
+
+export interface LegalEntity {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  status: OrgUnitStatus;
+}
+
+export interface BusinessUnit {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  status: OrgUnitStatus;
+  legalEntityId: string;
+  legalEntity?: LegalEntity;
+}
+
+export interface Division {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  status: OrgUnitStatus;
+  businessUnitId: string;
+  businessUnit?: BusinessUnit;
+  parentDivisionId?: string | null;
+  parent?: Division | null;
+}
+
+export interface CostCenter {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  status: OrgUnitStatus;
+  legalEntityId?: string | null;
+  legalEntity?: LegalEntity | null;
+  parentId?: string | null;
+  parent?: CostCenter | null;
+  managerEmployeeId?: string | null;
+}
+
+export interface Cargo {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  status: OrgUnitStatus;
+}
+
 export interface Department {
   id: string;
+  code?: string | null;
   name: string;
+  description?: string | null;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
+  status?: OrgUnitStatus;
+  divisionId?: string | null;
+  division?: Division | null;
+  costCenterId?: string | null;
+  costCenter?: CostCenter | null;
   parentId: string | null;
 }
 
 export interface Position {
   id: string;
+  code?: string | null;
   title: string;
+  description?: string | null;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
+  status?: OrgUnitStatus;
   departmentId: string;
   department?: Department;
+  cargoId?: string | null;
+  cargo?: Cargo | null;
+  costCenterId?: string | null;
+  costCenter?: CostCenter | null;
 }
 
 export interface AfpEntity {
@@ -16,6 +97,8 @@ export interface AfpEntity {
   name: string;
   workerRate: string;
   isActive: boolean;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
 }
 
 export interface HealthInstitution {
@@ -23,6 +106,40 @@ export interface HealthInstitution {
   name: string;
   type: 'FONASA' | 'ISAPRE';
   isActive: boolean;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
+}
+
+export interface Mutuality {
+  id: string;
+  code: string;
+  rut: string;
+  legalName: string;
+  tradeName?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  previredCode?: string | null;
+  isActive: boolean;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+}
+
+export interface Ccaf {
+  id: string;
+  code: string;
+  rut: string;
+  legalName: string;
+  tradeName?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  previredCode?: string | null;
+  isActive: boolean;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
 }
 
 export type AffiliationStatus = 'ACTIVE' | 'FINISHED' | 'PENDING';

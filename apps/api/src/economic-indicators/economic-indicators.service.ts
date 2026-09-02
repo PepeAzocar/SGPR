@@ -2,13 +2,18 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateEconomicIndicatorDto } from './dto/create-economic-indicator.dto.js';
 import { UpdateEconomicIndicatorDto } from './dto/update-economic-indicator.dto.js';
+import { rethrowAsHttpError } from '../common/utils/prisma-error.util.js';
 
 @Injectable()
 export class EconomicIndicatorsService {
   constructor(private prisma: PrismaService) {}
 
-  create(dto: CreateEconomicIndicatorDto) {
-    return this.prisma.economicIndicator.create({ data: dto });
+  async create(dto: CreateEconomicIndicatorDto) {
+    try {
+      return await this.prisma.economicIndicator.create({ data: dto });
+    } catch (err) {
+      rethrowAsHttpError(err);
+    }
   }
 
   findAll() {
@@ -23,7 +28,11 @@ export class EconomicIndicatorsService {
 
   async update(id: string, dto: UpdateEconomicIndicatorDto) {
     await this.findOne(id);
-    return this.prisma.economicIndicator.update({ where: { id }, data: dto });
+    try {
+      return await this.prisma.economicIndicator.update({ where: { id }, data: dto });
+    } catch (err) {
+      rethrowAsHttpError(err);
+    }
   }
 
   async remove(id: string) {

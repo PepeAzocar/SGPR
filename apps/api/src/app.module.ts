@@ -22,6 +22,13 @@ import { TaxBracketsModule } from './tax-brackets/tax-brackets.module.js';
 import { EmployeeAfpModule } from './employee-afp/employee-afp.module.js';
 import { EmployeePensionSavingsModule } from './employee-pension-savings/employee-pension-savings.module.js';
 import { HealthAffiliationsModule } from './health-affiliations/health-affiliations.module.js';
+import { LegalEntitiesModule } from './legal-entities/legal-entities.module.js';
+import { BusinessUnitsModule } from './business-units/business-units.module.js';
+import { DivisionsModule } from './divisions/divisions.module.js';
+import { CostCentersModule } from './cost-centers/cost-centers.module.js';
+import { CargosModule } from './cargos/cargos.module.js';
+import { MutualitiesModule } from './mutualities/mutualities.module.js';
+import { CcafsModule } from './ccafs/ccafs.module.js';
 
 @Module({
   imports: [
@@ -43,6 +50,13 @@ import { HealthAffiliationsModule } from './health-affiliations/health-affiliati
     EmployeeAfpModule,
     EmployeePensionSavingsModule,
     HealthAffiliationsModule,
+    LegalEntitiesModule,
+    BusinessUnitsModule,
+    DivisionsModule,
+    CostCentersModule,
+    CargosModule,
+    MutualitiesModule,
+    CcafsModule,
   ],
   controllers: [AppController],
   providers: [

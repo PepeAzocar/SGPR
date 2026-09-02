@@ -33,7 +33,7 @@ export function EmployeeDetailPage() {
   return (
     <div>
       <Link to="/" className="no-print">
-        &larr; Volver a empleados
+        &larr; Volver a colaboradores
       </Link>
       <div className="page-header">
         <h1>
@@ -496,7 +496,7 @@ function PensionSavingsTab({ employeeId, employee, onChange }: { employeeId: str
       <div className="page-header">
         <p className="hint">
           Productos de ahorro previsional voluntario (APV, Cuenta 2, cotización voluntaria, depósito convenido). Un
-          empleado puede tener varios simultáneamente.
+          colaborador puede tener varios simultáneamente.
         </p>
         <button onClick={() => setShowForm((v) => !v)}>{showForm ? 'Cancelar' : 'Agregar producto'}</button>
       </div>

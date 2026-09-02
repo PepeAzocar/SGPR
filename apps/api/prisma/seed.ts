@@ -28,6 +28,8 @@ async function main() {
   });
   console.log(`Usuario admin: ${adminEmail} / Admin123! (cambiar en producción)`);
 
+  const effectiveFrom = new Date(Date.UTC(2026, 0, 1));
+
   // --- AFPs (comisión trabajador EJEMPLO, incluye 10% obligatorio + comisión) ---
   const afps = [
     { name: 'Capital', workerRate: 11.44 },
@@ -39,18 +41,60 @@ async function main() {
     { name: 'Uno', workerRate: 10.49 },
   ];
   for (const afp of afps) {
-    await prisma.afpEntity.upsert({ where: { name: afp.name }, update: {}, create: afp });
+    await prisma.afpEntity.upsert({
+      where: { name: afp.name },
+      update: {},
+      create: { ...afp, effectiveFrom },
+    });
   }
 
   // --- Instituciones de salud ---
   await prisma.healthInstitution.upsert({
     where: { name: 'Fonasa' },
     update: {},
-    create: { name: 'Fonasa', type: 'FONASA' },
+    create: { name: 'Fonasa', type: 'FONASA', effectiveFrom },
   });
   const isapres = ['Banmédica', 'Colmena', 'Cruz Blanca', 'Consalud', 'Nueva Masvida'];
   for (const name of isapres) {
-    await prisma.healthInstitution.upsert({ where: { name }, update: {}, create: { name, type: 'ISAPRE' } });
+    await prisma.healthInstitution.upsert({
+      where: { name },
+      update: {},
+      create: { name, type: 'ISAPRE', effectiveFrom },
+    });
+  }
+
+  // --- Mutualidades (Ley 16.744) ---
+  const mutualities = [
+    { code: 'MUT-ACHS', rut: '70.144.100-9', legalName: 'Asociación Chilena de Seguridad', tradeName: 'ACHS' },
+    { code: 'MUT-IST', rut: '70.365.300-8', legalName: 'Instituto de Seguridad del Trabajo', tradeName: 'IST' },
+    {
+      code: 'MUT-MUTSEG',
+      rut: '70.116.500-8',
+      legalName: 'Mutual de Seguridad de la Cámara Chilena de la Construcción',
+      tradeName: 'Mutual de Seguridad CChC',
+    },
+  ];
+  for (const mutuality of mutualities) {
+    await prisma.mutuality.upsert({
+      where: { code: mutuality.code },
+      update: {},
+      create: { ...mutuality, effectiveFrom },
+    });
+  }
+
+  // --- Cajas de Compensación de Asignación Familiar (CCAF) ---
+  const ccafs = [
+    { code: 'CCAF-LOSANDES', rut: '70.999.500-1', legalName: 'Caja de Compensación Los Andes', tradeName: 'Los Andes' },
+    { code: 'CCAF-ARAUCANA', rut: '70.999.600-2', legalName: 'Caja de Compensación La Araucana', tradeName: 'La Araucana' },
+    { code: 'CCAF-LOSHEROES', rut: '70.999.700-3', legalName: 'Caja de Compensación Los Héroes', tradeName: 'Los Héroes' },
+    { code: 'CCAF-18SEP', rut: '70.999.800-4', legalName: 'Caja de Compensación 18 de Septiembre', tradeName: '18 de Septiembre' },
+  ];
+  for (const ccaf of ccafs) {
+    await prisma.ccaf.upsert({
+      where: { code: ccaf.code },
+      update: {},
+      create: { ...ccaf, effectiveFrom },
+    });
   }
 
   // --- Indicadores económicos EJEMPLO para el período actual ---
@@ -104,16 +148,110 @@ async function main() {
     });
   }
 
-  // --- Departamento y cargo de ejemplo ---
+  // --- Estructura organizacional de ejemplo ---
+  // LegalEntity -> BusinessUnit -> Division -> Department -> Position,
+  // con CostCenter como maestro independiente referenciado desde Department y Position.
+  const legalEntity = await prisma.legalEntity.upsert({
+    where: { id: 'seed-legal-entity' },
+    update: {},
+    create: {
+      id: 'seed-legal-entity',
+      code: 'LE-001',
+      name: 'Imaginadem SpA',
+      effectiveFrom,
+      status: 'ACTIVE',
+    },
+  });
+
+  const businessUnit = await prisma.businessUnit.upsert({
+    where: { id: 'seed-business-unit' },
+    update: {},
+    create: {
+      id: 'seed-business-unit',
+      code: 'BU-001',
+      name: 'Operaciones',
+      legalEntityId: legalEntity.id,
+      effectiveFrom,
+      status: 'ACTIVE',
+    },
+  });
+
+  const division = await prisma.division.upsert({
+    where: { id: 'seed-division' },
+    update: {},
+    create: {
+      id: 'seed-division',
+      code: 'DIV-001',
+      name: 'Administración y Finanzas',
+      businessUnitId: businessUnit.id,
+      effectiveFrom,
+      status: 'ACTIVE',
+    },
+  });
+
+  const costCenter = await prisma.costCenter.upsert({
+    where: { id: 'seed-cost-center' },
+    update: {},
+    create: {
+      id: 'seed-cost-center',
+      code: 'CC-1000',
+      name: 'Administración Central',
+      legalEntityId: legalEntity.id,
+      effectiveFrom,
+      status: 'ACTIVE',
+    },
+  });
+
+  const cargo = await prisma.cargo.upsert({
+    where: { id: 'seed-cargo-analista' },
+    update: {},
+    create: {
+      id: 'seed-cargo-analista',
+      code: 'CARGO-ANALISTA-REM',
+      name: 'Analista de Remuneraciones',
+      effectiveFrom,
+      status: 'ACTIVE',
+    },
+  });
+
   const dept = await prisma.department.upsert({
     where: { id: 'seed-dept-admin' },
-    update: {},
-    create: { id: 'seed-dept-admin', name: 'Administración y Finanzas' },
+    update: {
+      divisionId: division.id,
+      costCenterId: costCenter.id,
+      code: 'DEPT-001',
+      effectiveFrom,
+      status: 'ACTIVE',
+    },
+    create: {
+      id: 'seed-dept-admin',
+      code: 'DEPT-001',
+      name: 'Administración y Finanzas',
+      divisionId: division.id,
+      costCenterId: costCenter.id,
+      effectiveFrom,
+      status: 'ACTIVE',
+    },
   });
   await prisma.position.upsert({
     where: { id: 'seed-position-analista' },
-    update: {},
-    create: { id: 'seed-position-analista', title: 'Analista de Remuneraciones', departmentId: dept.id },
+    update: {
+      cargoId: cargo.id,
+      costCenterId: costCenter.id,
+      code: 'POS-001',
+      effectiveFrom,
+      status: 'ACTIVE',
+    },
+    create: {
+      id: 'seed-position-analista',
+      code: 'POS-001',
+      title: 'Analista de Remuneraciones',
+      departmentId: dept.id,
+      cargoId: cargo.id,
+      costCenterId: costCenter.id,
+      effectiveFrom,
+      status: 'ACTIVE',
+    },
   });
 
   console.log('Seed completado.');

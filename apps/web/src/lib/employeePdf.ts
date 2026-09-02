@@ -12,7 +12,7 @@ export function downloadEmployeePdf(employee: Employee) {
   let y = 56;
 
   doc.setFontSize(16);
-  doc.text('Ficha de Empleado', marginX, y);
+  doc.text('Ficha de Colaborador', marginX, y);
   y += 12;
   doc.setFontSize(9);
   doc.setTextColor(120);

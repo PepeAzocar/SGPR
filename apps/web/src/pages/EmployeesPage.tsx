@@ -103,7 +103,7 @@ export function EmployeesPage() {
       cancelForm();
       await loadAll();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo guardar el empleado');
+      setError(err instanceof ApiError ? err.message : 'No se pudo guardar el colaborador');
     }
   }
 
@@ -118,7 +118,7 @@ export function EmployeesPage() {
     } catch (err) {
       // Un 409 significa que hay registros asociados (contratos, liquidaciones, etc.)
       // y el backend impide borrar para no romper la integridad referencial.
-      setError(err instanceof ApiError ? err.message : 'No se pudo eliminar el empleado');
+      setError(err instanceof ApiError ? err.message : 'No se pudo eliminar el colaborador');
     } finally {
       setDeletingId(null);
     }
@@ -127,8 +127,8 @@ export function EmployeesPage() {
   return (
     <div>
       <div className="page-header">
-        <h1>Empleados</h1>
-        <button onClick={showForm ? cancelForm : startCreate}>{showForm ? 'Cancelar' : 'Nuevo empleado'}</button>
+        <h1>Colaboradores</h1>
+        <button onClick={showForm ? cancelForm : startCreate}>{showForm ? 'Cancelar' : 'Nuevo colaborador'}</button>
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -206,7 +206,7 @@ export function EmployeesPage() {
 
       <p className="hint">
         La AFP, la afiliación de salud y el ahorro previsional voluntario se administran en la
-        ficha de cada empleado ("Afiliaciones"), ya que son datos con vigencia histórica.
+        ficha de cada colaborador ("Afiliaciones"), ya que son datos con vigencia histórica.
       </p>
 
       <table className="table">
@@ -245,7 +245,7 @@ export function EmployeesPage() {
           {employees.length === 0 && (
             <tr>
               <td colSpan={5} className="empty">
-                Sin empleados registrados.
+                Sin colaboradores registrados.
               </td>
             </tr>
           )}

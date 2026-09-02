@@ -235,6 +235,14 @@ a {
   align-items: center;
 }
 
+.danger-btn {
+  background: var(--danger);
+}
+
+.danger-btn:hover {
+  background: #7f1d1d;
+}
+
 .error {
   color: var(--danger);
   font-size: 0.85rem;
