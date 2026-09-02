@@ -87,7 +87,7 @@ export class PayrollPeriodsService {
         OR: [{ endDate: null }, { endDate: { gte: periodStart } }],
         employee: { status: 'ACTIVE' },
       },
-      include: { employee: true },
+      include: { employee: true, contractType: true },
     });
 
     const results = [];
@@ -135,7 +135,7 @@ export class PayrollPeriodsService {
         baseSalary: Number(contract.baseSalary),
         otherTaxableEarnings: 0,
         nonTaxableEarnings: 0,
-        contractType: contract.type,
+        contractType: contract.contractType.code,
         afpWorkerRatePct: afpTotalRatePct,
         isFonasa: health.healthInstitution.type === 'FONASA',
         isapreMonthlyPlanClp: health.planUfValue

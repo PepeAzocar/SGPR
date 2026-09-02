@@ -8,31 +8,35 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import type { AuthenticatedUser } from '../auth/jwt.strategy.js';
 
 @UseGuards(RolesGuard)
-@Roles('ADMIN')
 @Controller('cost-centers')
 export class CostCentersController {
   constructor(private readonly costCentersService: CostCentersService) {}
 
+  @Roles('ADMIN')
   @Post()
   create(@Body() dto: CreateCostCenterDto, @CurrentUser() user: AuthenticatedUser) {
     return this.costCentersService.create(dto, user.email);
   }
 
+  @Roles('ADMIN', 'RRHH')
   @Get()
   findAll() {
     return this.costCentersService.findAll();
   }
 
+  @Roles('ADMIN', 'RRHH')
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.costCentersService.findOne(id);
   }
 
+  @Roles('ADMIN')
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateCostCenterDto, @CurrentUser() user: AuthenticatedUser) {
     return this.costCentersService.update(id, dto, user.email);
   }
 
+  @Roles('ADMIN')
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.costCentersService.remove(id);

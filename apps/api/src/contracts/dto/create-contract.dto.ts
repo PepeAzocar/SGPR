@@ -1,15 +1,14 @@
 import {
   IsBoolean,
   IsDate,
-  IsEnum,
   IsInt,
   IsNumber,
   IsOptional,
   IsString,
   Min,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ContractType } from '../../generated/prisma/enums.js';
 
 export class CreateContractDto {
   @IsString()
@@ -18,8 +17,23 @@ export class CreateContractDto {
   @IsString()
   positionId: string;
 
-  @IsEnum(ContractType)
-  type: ContractType;
+  @IsString()
+  legalEntityId: string;
+
+  @IsString()
+  laborRegimeId: string;
+
+  @IsString()
+  contractTypeId: string;
+
+  @IsString()
+  @MaxLength(30)
+  contractNumber: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  sequenceNumber?: number;
 
   @IsDate()
   @Type(() => Date)

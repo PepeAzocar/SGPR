@@ -88,15 +88,90 @@ catálogos (menú "Catálogos" en el frontend, o directamente por API):
 El motor de cálculo (`apps/api/src/payroll/chile/payroll-calculator.service.ts`)
 no tiene estas cifras hardcodeadas; las lee siempre desde estos catálogos.
 
+## Define Cálculo Nómina — motor de reglas de remuneraciones
+
+Utilidades del sistema → **Define Cálculo Nómina** (`/payroll-formulas`).
+Arquitectura híbrida, tal como se pidió: el motor técnico
+(`apps/api/src/payroll-formulas/formula-engine.ts`) sólo sabe interpretar un
+lenguaje de expresiones limitado y seguro (variables, `+ - * / > < >= <= = <>`,
+`AND`/`OR`, y las funciones `IF`, `ROUND`, `MIN`, `MAX`, `SUM`, `ABS`,
+`LOOKUP`) — nunca `eval()` ni código JS/Python/Java. Todo lo que cambia con
+la normativa vive como configuración versionada:
+
+- **Conceptos** (`payroll-concepts`, ya existente): a qué se le calcula algo.
+- **Variables** (`payroll-variables`): catálogo documental (SUELDO_BASE, UF, etc.).
+- **Parámetros** (`payroll-parameters`): valores con vigencia histórica (ej.
+  un porcentaje) — nunca se sobrescriben, se cierra el anterior y se crea uno
+  nuevo, igual que AFP/cuenta bancaria.
+- **Tablas** (`payroll-tables`): tramos consultables con `LOOKUP(TABLA, valor)`.
+- **Fórmulas** (`payroll-formulas`): versionadas por concepto, con ciclo de
+  vida `DRAFT → TESTING → PENDING_APPROVAL → APPROVED → ACTIVE → INACTIVE`
+  (o `REJECTED`). **Nunca se edita ni se borra una fórmula fuera de
+  BORRADOR** — un cambio siempre crea una nueva versión; al activarla, la
+  versión anterior del mismo concepto y alcance (régimen jurídico + entidad
+  legal) se cierra automáticamente. Creador ≠ aprobador: RRHH crea/prueba,
+  sólo ADMIN aprueba/activa. Simulador integrado (`POST
+  /payroll-formulas/evaluate`) para probar antes de guardar.
+
+**Deliberadamente fuera de esta entrega** (siguiendo tu propia regla 80/20 y
+tu nota de que el módulo debe ser independiente del proceso de cálculo por
+ahora): el motor de fórmulas **no está conectado** al cálculo real de
+liquidaciones (`payroll-periods.service.ts` sigue usando la lógica
+hardcodeada de siempre — AFP, salud, gratificación, impuesto único). Tampoco
+se implementó el grafo de dependencias entre fórmulas (`PAYROLL_FORMULA_DEPENDENCY`)
+— el orden de cálculo hoy sólo se documenta vía `priority`; ni los casos de
+prueba guardados (`PAYROLL_FORMULA_TEST`) — el simulador evalúa al vuelo pero
+no persiste casos con resultado esperado/actual.
+
+## Reglas de negocio relevantes
+
+- **Contratos sin superposición de vigencia**: un colaborador puede tener más
+  de un contrato activo simultáneamente sólo si sus rangos de fecha
+  (`startDate`–`endDate`) no se cruzan (ej. renovaciones consecutivas de
+  plazo fijo). Al crear o editar un contrato que queda activo, el sistema
+  desactiva automáticamente cualquier otro contrato activo del mismo
+  colaborador cuya vigencia se superponga con la de éste — no rechaza la
+  operación, resuelve el conflicto dejando sólo los contratos no
+  superpuestos como activos (`apps/api/src/contracts/contracts.service.ts`).
+
 ## Módulos implementados
 
 - **Personas**: empleados, departamentos, cargos, contratos, ausencias
-  (vacaciones/licencias).
+  (vacaciones/licencias). Cada contrato queda tipificado por su régimen
+  jurídico (`labor-regimes`, hoy sólo Código del Trabajo) y su tipo
+  contractual (`contract-types`), catálogos parametrizables pensados para
+  poder activar a futuro regímenes estatutarios (docente, asistentes de la
+  educación, salud APS) sin rediseñar el modelo de contrato.
+- **Datos bancarios del colaborador** (`employee-bank-accounts`, pestaña
+  "Datos bancarios" en la ficha del colaborador): historial de cuentas
+  bancarias con vigencia (banco, tipo de cuenta, forma de pago, titular,
+  moneda). Igual que AFP/salud: nunca se sobrescribe una cuenta, al
+  registrar una nueva cuenta principal se cierra automáticamente la anterior
+  en la fecha en que empieza a regir la nueva. El número de cuenta se
+  muestra enmascarado en el historial (los últimos 4 dígitos) con opción de
+  revelarlo; no está cifrado en la base de datos, igual que el resto de los
+  datos sensibles del sistema (RUT, sueldo). Catálogos separados: `banks`,
+  `bank-account-types`, `payment-methods`.
+- **Movimientos del colaborador** (`employee-events`): registro histórico e
+  inmutable (crear/anular, nunca editar) de todo cambio relevante en la
+  relación laboral — contratación, cambio de remuneración, jornada, régimen
+  jurídico, centro de costo, cargo, licencias, término, etc. — con motivo
+  dependiente del tipo de evento, detección automática de retroactividad
+  respecto de los períodos de remuneración ya calculados, e indicador de si
+  afecta el cálculo de liquidaciones. Cambio de remuneración, de horas
+  semanales y de régimen jurídico se aplican de inmediato al contrato
+  vigente del colaborador; los cambios estructurales (centro de costo,
+  posición) quedan en el historial pero su aplicación real sigue
+  haciéndose creando un nuevo contrato, porque `Position` es un catálogo
+  compartido entre colaboradores sin historial propio todavía.
 - **Remuneraciones**: períodos de remuneración, cálculo automático de
   liquidaciones (sueldo base, gratificación legal, AFP, salud, seguro de
   cesantía, impuesto único), conceptos de remuneración configurables.
 - **Catálogos previsionales**: AFP, instituciones de salud, indicadores
   económicos, tabla de impuesto único.
+- **Catálogos geográficos**: país, región, comuna (con dependencia
+  jerárquica país → región → comuna) y nacionalidad. Alimentan los
+  selectores de las fichas de colaboradores para evitar texto libre.
 - **Autenticación**: login JWT, roles ADMIN / RRHH / EMPLOYEE.
 
 ## Pendiente / posibles siguientes pasos

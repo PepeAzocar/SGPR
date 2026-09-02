@@ -6,6 +6,8 @@ import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { EmployeeDetailPage } from './pages/EmployeeDetailPage';
+import { EmployeeMovementsPage } from './pages/EmployeeMovementsPage';
+import { EmployeeBankAccountsPage } from './pages/EmployeeBankAccountsPage';
 import { LegalEntitiesPage } from './pages/LegalEntitiesPage';
 import { BusinessUnitsPage } from './pages/BusinessUnitsPage';
 import { DivisionsPage } from './pages/DivisionsPage';
@@ -18,6 +20,8 @@ import { LeavesPage } from './pages/LeavesPage';
 import { PayrollPeriodsPage } from './pages/PayrollPeriodsPage';
 import { PayrollPeriodDetailPage } from './pages/PayrollPeriodDetailPage';
 import { CatalogsPage } from './pages/CatalogsPage';
+import { GeoCatalogsPage } from './pages/GeoCatalogsPage';
+import { PayrollFormulasPage } from './pages/PayrollFormulasPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
 export default function App() {
@@ -35,6 +39,8 @@ export default function App() {
           >
             <Route path="/" element={<EmployeesPage />} />
             <Route path="/employees/:id" element={<EmployeeDetailPage />} />
+            <Route path="/movements" element={<EmployeeMovementsPage />} />
+            <Route path="/bank-accounts" element={<EmployeeBankAccountsPage />} />
             <Route
               path="/legal-entities"
               element={
@@ -82,6 +88,8 @@ export default function App() {
             <Route path="/payroll-periods" element={<PayrollPeriodsPage />} />
             <Route path="/payroll-periods/:id" element={<PayrollPeriodDetailPage />} />
             <Route path="/catalogs" element={<CatalogsPage />} />
+            <Route path="/geo-catalogs" element={<GeoCatalogsPage />} />
+            <Route path="/payroll-formulas" element={<PayrollFormulasPage />} />
             <Route
               path="/earnings-imputation"
               element={

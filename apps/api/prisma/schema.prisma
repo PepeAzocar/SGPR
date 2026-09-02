@@ -64,6 +64,8 @@ model LegalEntity {
 
   businessUnits BusinessUnit[]
   costCenters   CostCenter[]
+  contracts     Contract[]
+  payrollFormulas PayrollFormula[]
 
   createdBy     String?       @db.VarChar(150)
   updatedBy     String?       @db.VarChar(150)
@@ -215,6 +217,72 @@ model Position {
 }
 
 // ---------------------------------------------------------------------------
+// Catálogos geográficos
+//
+// País -> Región -> Comuna forman una jerarquía de dependencia: una Región
+// siempre pertenece a un País y una Comuna siempre pertenece a una Región.
+// Nacionalidad es un catálogo independiente (gentilicios), sin jerarquía.
+//
+// Employee sigue guardando nationality/birthCountry/birthRegion/birthCommune
+// como texto (compatibilidad con datos existentes): el frontend puebla esos
+// campos seleccionando desde estos catálogos en vez de escritura libre.
+// ---------------------------------------------------------------------------
+
+model Country {
+  id        String   @id @default(cuid())
+  code      String   @unique @db.VarChar(10)
+  name      String   @unique @db.VarChar(100)
+  isActive  Boolean  @default(true)
+
+  regions   Region[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Region {
+  id        String   @id @default(cuid())
+  code      String?  @db.VarChar(20)
+  name      String   @db.VarChar(100)
+  isActive  Boolean  @default(true)
+
+  country   Country  @relation(fields: [countryId], references: [id])
+  countryId String
+
+  communes  Commune[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([countryId, name])
+}
+
+model Commune {
+  id        String   @id @default(cuid())
+  code      String?  @db.VarChar(20)
+  name      String   @db.VarChar(100)
+  isActive  Boolean  @default(true)
+
+  region    Region   @relation(fields: [regionId], references: [id])
+  regionId  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([regionId, name])
+}
+
+model Nationality {
+  id        String   @id @default(cuid())
+  code      String?  @db.VarChar(10)
+  name      String   @unique @db.VarChar(100)
+  isActive  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
 // Personas / trabajadores
 // ---------------------------------------------------------------------------
 
@@ -278,6 +346,8 @@ model Employee {
   pensionSavings      EmployeePensionSaving[]
 
   contracts      Contract[]
+  events         EmployeeEvent[]
+  bankAccounts   EmployeeBankAccount[]
   leaves         Leave[]
   payslips       Payslip[]
   user           User?
@@ -289,29 +359,286 @@ model Employee {
 
 // ---------------------------------------------------------------------------
 // Contratos
+//
+// Todo contrato queda tipificado por su régimen jurídico (LaborRegime) y su
+// tipo contractual (ContractType), que a su vez depende del régimen: el mismo
+// catálogo ContractType sirve para modelar, en el futuro, tipos propios de
+// regímenes estatutarios (docente, asistente de la educación, salud APS, etc.)
+// sin tocar el modelo de Contract. Por ahora sólo se usa el régimen Código del
+// Trabajo (sector privado); el resto del catálogo LaborRegime queda
+// parametrizado para cuando se necesite activar esos regímenes.
 // ---------------------------------------------------------------------------
 
-enum ContractType {
-  INDEFINIDO
-  PLAZO_FIJO
-  POR_OBRA_O_FAENA
-  HONORARIOS
+// Régimen jurídico de la relación laboral (Código del Trabajo, Estatuto
+// Docente, Estatuto APS, etc.). Catálogo parametrizable y versionable por
+// vigencia normativa: no se asume que la realidad actual (o futura) quede
+// cubierta únicamente por un único estatuto.
+model LaborRegime {
+  id            String         @id @default(cuid())
+  code          String         @unique @db.VarChar(30) // ej. CODIGO_TRABAJO, LEY_19070, LEY_19378
+  name          String         @db.VarChar(150)
+  mainNorm      String?        @db.VarChar(200) // norma_principal, ej. "DFL N°1 - Código del Trabajo"
+  isActive      Boolean        @default(true)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+
+  contractTypes ContractType[]
+  contracts     Contract[]
+  employeeEvents EmployeeEvent[]
+  payrollFormulas PayrollFormula[]
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+// Tipo contractual dentro de un régimen jurídico (ej. INDEFINIDO/PLAZO_FIJO
+// bajo Código del Trabajo). Reemplaza el enum fijo anterior para poder
+// agregar tipos nuevos (incluidos los de regímenes estatutarios futuros) sin
+// una migración de esquema.
+model ContractType {
+  id                         String       @id @default(cuid())
+  code                       String       @db.VarChar(30) // ej. INDEFINIDO, PLAZO_FIJO
+  name                       String       @db.VarChar(100)
+
+  laborRegime                LaborRegime  @relation(fields: [laborRegimeId], references: [id])
+  laborRegimeId              String
+
+  requiresEndDate            Boolean      @default(false)
+  allowsExtension            Boolean      @default(false)
+  allowsIndefiniteConversion Boolean      @default(false)
+  payrollRelevant            Boolean      @default(true) // ej. honorarios no pasa por el motor de liquidaciones
+
+  isActive                   Boolean      @default(true)
+  effectiveFrom               DateTime?
+  effectiveTo                DateTime?
+
+  contracts                  Contract[]
+
+  createdAt                  DateTime     @default(now())
+  updatedAt                  DateTime     @updatedAt
+
+  @@unique([laborRegimeId, code])
 }
 
 model Contract {
-  id            String       @id @default(cuid())
-  employee      Employee     @relation(fields: [employeeId], references: [id])
-  employeeId    String
-  position      Position     @relation(fields: [positionId], references: [id])
-  positionId    String
-  type          ContractType
-  startDate     DateTime
-  endDate       DateTime?
-  baseSalary    Decimal      @db.Decimal(12, 2) // sueldo base mensual, CLP
-  weeklyHours   Int          @default(45)
-  isActive      Boolean      @default(true)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id             String       @id @default(cuid())
+  contractNumber String       @db.VarChar(30) // número interno, único por entidad empleadora
+  sequenceNumber Int          @default(1) // secuencia efectiva del contrato para esta relación laboral
+
+  employee       Employee     @relation(fields: [employeeId], references: [id])
+  employeeId     String
+  position       Position     @relation(fields: [positionId], references: [id])
+  positionId     String
+
+  legalEntity    LegalEntity  @relation(fields: [legalEntityId], references: [id]) // empleador
+  legalEntityId  String
+
+  laborRegime    LaborRegime  @relation(fields: [laborRegimeId], references: [id])
+  laborRegimeId  String
+  contractType   ContractType @relation(fields: [contractTypeId], references: [id])
+  contractTypeId String
+
+  startDate      DateTime
+  endDate        DateTime?
+  baseSalary     Decimal      @db.Decimal(12, 2) // sueldo base mensual, CLP
+  weeklyHours    Int          @default(45)
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([legalEntityId, contractNumber])
+}
+
+// ---------------------------------------------------------------------------
+// Movimientos del funcionario (EMPLOYEE_EVENT)
+//
+// Registro histórico e inmutable de todo cambio relevante en la relación
+// laboral: contratación, cambios de remuneración, jornada, régimen jurídico,
+// centro de costo, cargo, licencias, término, etc. La pantalla de captura NO
+// debe escribir directamente sobre Contract/Position: debe crear primero un
+// EmployeeEvent (con su detalle en EmployeeEventChange) y, sólo para los
+// campos que ya tienen un lugar natural en el modelo actual (sueldo base,
+// horas semanales, régimen jurídico — todos en Contract), aplicar el cambio
+// sobre el contrato vigente del colaborador. Cambios estructurales (centro de
+// costo, cargo, posición) quedan registrados en el historial pero su
+// aplicación real sigue haciéndose creando un nuevo Contract, porque Position
+// es un catálogo compartido entre colaboradores y no lleva historial propio
+// todavía (ver EMPLOYMENT_CONTRACT en el módulo de Contratos).
+// ---------------------------------------------------------------------------
+
+model EventType {
+  id              String   @id @default(cuid())
+  code            String   @unique @db.VarChar(40) // ej. HIRE, PAY_CHANGE, COST_CENTER_CHANGE
+  name            String   @db.VarChar(150)
+  payrollRelevant Boolean  @default(false) // valor por defecto al crear un movimiento de este tipo
+  isActive        Boolean  @default(true)
+
+  reasons         EventReason[]
+  employeeEvents  EmployeeEvent[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model EventReason {
+  id            String    @id @default(cuid())
+  code          String    @db.VarChar(40)
+  name          String    @db.VarChar(150)
+
+  eventType     EventType @relation(fields: [eventTypeId], references: [id])
+  eventTypeId   String
+
+  isActive      Boolean   @default(true)
+
+  employeeEvents EmployeeEvent[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([eventTypeId, code])
+}
+
+enum EmployeeEventStatus {
+  APPLIED
+  CANCELLED
+}
+
+model EmployeeEvent {
+  id                String              @id @default(cuid())
+
+  employee          Employee            @relation(fields: [employeeId], references: [id])
+  employeeId        String
+
+  effectiveDate     DateTime
+  sequenceNumber    Int // secuencia del movimiento para este colaborador (1, 2, 3, ...)
+
+  eventType         EventType           @relation(fields: [eventTypeId], references: [id])
+  eventTypeId       String
+  eventReason       EventReason         @relation(fields: [eventReasonId], references: [id])
+  eventReasonId     String
+
+  description       String?             @db.VarChar(500)
+  documentReference String?             @db.VarChar(200)
+
+  // Régimen jurídico vigente al momento del movimiento (snapshot del contrato
+  // activo del colaborador en ese instante, no necesariamente el que queda
+  // vigente después de aplicar el movimiento).
+  laborRegime       LaborRegime?        @relation(fields: [laborRegimeId], references: [id])
+  laborRegimeId     String?
+
+  payrollRelevant   Boolean // copiado de EventType.payrollRelevant al crear el movimiento
+  retroactive       Boolean // effectiveDate cae en o antes de un período de remuneraciones ya calculado
+
+  status            EmployeeEventStatus @default(APPLIED)
+
+  changes           EmployeeEventChange[]
+  bankAccounts      EmployeeBankAccount[]
+
+  createdBy         String?             @db.VarChar(150)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@unique([employeeId, sequenceNumber])
+}
+
+// Detalle de un movimiento: permite que un mismo EmployeeEvent modifique más
+// de un atributo (ej. una promoción que cambia posición y sueldo base a la
+// vez) sin necesitar una fila de historial independiente por cada campo.
+model EmployeeEventChange {
+  id              String        @id @default(cuid())
+
+  employeeEvent   EmployeeEvent @relation(fields: [employeeEventId], references: [id], onDelete: Cascade)
+  employeeEventId String
+
+  fieldCode       String        @db.VarChar(40) // ej. BASE_SALARY, WEEKLY_HOURS, COST_CENTER, POSITION, LABOR_REGIME, OTHER
+  oldValue        String?       @db.VarChar(300)
+  newValue        String?       @db.VarChar(300)
+  oldReferenceId  String?
+  newReferenceId  String?
+}
+
+// ---------------------------------------------------------------------------
+// Datos bancarios del funcionario
+//
+// Igual que EmployeeAfp/HealthAffiliation: con vigencia histórica, nunca se
+// sobrescribe una cuenta existente. Al registrar una nueva cuenta principal
+// se cierra automáticamente (effectiveTo = nueva effectiveFrom, status =
+// FINISHED) la cuenta principal vigente anterior del mismo colaborador, para
+// no perder el dato histórico y saber con precisión desde cuándo debe usarse
+// cada cuenta para el pago de remuneraciones.
+// ---------------------------------------------------------------------------
+
+model Bank {
+  id            String    @id @default(cuid())
+  code          String    @unique @db.VarChar(10)
+  name          String    @unique @db.VarChar(100)
+  regulatorCode String?   @db.VarChar(20) // código SBIF/CMF
+  isActive      Boolean   @default(true)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+
+  bankAccounts  EmployeeBankAccount[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model BankAccountType {
+  id       String   @id @default(cuid())
+  code     String   @unique @db.VarChar(30) // ej. CUENTA_CORRIENTE, CUENTA_VISTA, CUENTA_RUT
+  name     String   @db.VarChar(100)
+  isActive Boolean  @default(true)
+
+  bankAccounts EmployeeBankAccount[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PaymentMethod {
+  id       String  @id @default(cuid())
+  code     String  @unique @db.VarChar(30) // ej. BANK_TRANSFER, CASH, CHECK, PAYROLL_CARD
+  name     String  @db.VarChar(100)
+  isActive Boolean @default(true)
+
+  bankAccounts EmployeeBankAccount[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmployeeBankAccount {
+  id                String            @id @default(cuid())
+
+  employee          Employee          @relation(fields: [employeeId], references: [id])
+  employeeId        String
+
+  bank              Bank              @relation(fields: [bankId], references: [id])
+  bankId            String
+  accountType       BankAccountType   @relation(fields: [accountTypeId], references: [id])
+  accountTypeId     String
+  paymentMethod     PaymentMethod     @relation(fields: [paymentMethodId], references: [id])
+  paymentMethodId   String
+
+  accountNumber     String            @db.VarChar(30)
+  accountHolderName String            @db.VarChar(150)
+  accountHolderRut  String            @db.VarChar(12)
+  currencyCode      String            @db.VarChar(3) @default("CLP")
+
+  isPrimary         Boolean           @default(true)
+  effectiveFrom     DateTime
+  effectiveTo       DateTime?
+  status            AffiliationStatus @default(ACTIVE)
+
+  // Movimiento que originó el cambio, cuando corresponde (ej. registrado
+  // desde el módulo de Movimientos con evento BANK_ACCOUNT_CHANGE).
+  employeeEvent     EmployeeEvent?    @relation(fields: [employeeEventId], references: [id])
+  employeeEventId   String?
+
+  notes             String?           @db.VarChar(500)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 }
 
 // ---------------------------------------------------------------------------
@@ -596,6 +923,7 @@ model PayrollConcept {
   category  ConceptCategory
   isSystem  Boolean         @default(false) // conceptos calculados automáticamente por el sistema
   items     PayslipItem[]
+  formulas  PayrollFormula[]
 }
 
 model Payslip {
@@ -624,4 +952,140 @@ model PayslipItem {
   concept    PayrollConcept @relation(fields: [conceptId], references: [id])
   conceptId  String
   amount     Decimal        @db.Decimal(12, 2)
+}
+
+// ---------------------------------------------------------------------------
+// Motor de Reglas de Remuneraciones ("Define Cálculo Nómina")
+//
+// Arquitectura híbrida: el motor de cálculo (fuera de este archivo, en
+// payroll-formulas/formula-engine.ts) sólo sabe interpretar un lenguaje de
+// expresiones limitado y seguro (sin eval, sin código arbitrario). Todo lo
+// que cambia con la normativa o la política de la empresa —fórmulas,
+// porcentajes, tramos— vive aquí como configuración versionada.
+//
+// Regla central: una fórmula que ya salió de DRAFT nunca se edita ni se
+// borra. Un cambio siempre crea una nueva versión (mismo conceptId, version
+// + 1); la anterior se cierra (effectiveTo, status = INACTIVE) al activar la
+// siguiente, igual que el resto de los históricos de este sistema
+// (EmployeeAfp, EmployeeBankAccount, Contract).
+// ---------------------------------------------------------------------------
+
+enum PayrollFormulaStatus {
+  DRAFT
+  TESTING
+  PENDING_APPROVAL
+  APPROVED
+  ACTIVE
+  INACTIVE
+  REJECTED
+}
+
+enum PayrollVariableSource {
+  EMPLOYEE
+  CONTRACT
+  INDICATOR
+  PARAMETER
+  TABLE
+  SYSTEM
+}
+
+// Catálogo documental de las variables que el motor pone a disposición de
+// las fórmulas (ej. SUELDO_BASE, HORAS_SEMANALES, UF). No valida en tiempo
+// de guardado que la fórmula sólo use variables existentes en este catálogo;
+// eso lo hace el simulador al ejecutar la fórmula contra variables reales.
+model PayrollVariable {
+  id          String                 @id @default(cuid())
+  code        String                 @unique @db.VarChar(50)
+  name        String                 @db.VarChar(150)
+  description String?                @db.VarChar(300)
+  source      PayrollVariableSource
+  isActive    Boolean                @default(true)
+
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+}
+
+model PayrollParameter {
+  id          String                    @id @default(cuid())
+  code        String                    @unique @db.VarChar(50)
+  name        String                    @db.VarChar(150)
+  description String?                   @db.VarChar(300)
+  isActive    Boolean                   @default(true)
+
+  values      PayrollParameterValue[]
+
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+}
+
+// Valor de un parámetro con vigencia histórica (ej. PORC_RESPONSABILIDAD
+// 0.10 desde 01-01-2026, 0.12 desde 01-01-2027) para poder cambiar un
+// porcentaje sin tocar la fórmula que lo usa.
+model PayrollParameterValue {
+  id            String           @id @default(cuid())
+  parameter     PayrollParameter @relation(fields: [parameterId], references: [id])
+  parameterId   String
+  value         Decimal          @db.Decimal(14, 6)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  createdAt     DateTime         @default(now())
+}
+
+model PayrollTable {
+  id       String            @id @default(cuid())
+  code     String            @unique @db.VarChar(50)
+  name     String            @db.VarChar(150)
+  isActive Boolean           @default(true)
+
+  rows     PayrollTableRow[]
+
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+// Fila de tramo (ej. tabla de impuesto/tramos de asignación): LOOKUP(TABLA,
+// valor) busca la fila donde fromValue <= valor <= toValue (o sin tope si
+// toValue es nulo) y entrega resultValue.
+model PayrollTableRow {
+  id            String       @id @default(cuid())
+  table         PayrollTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  tableId       String
+  fromValue     Decimal      @db.Decimal(14, 4)
+  toValue       Decimal?     @db.Decimal(14, 4)
+  resultValue   Decimal      @db.Decimal(14, 6)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+}
+
+// La fórmula versionada asociada a un PayrollConcept. Nunca se edita una vez
+// fuera de DRAFT: se crea una nueva versión (conceptId, version+1).
+model PayrollFormula {
+  id                String               @id @default(cuid())
+
+  concept           PayrollConcept       @relation(fields: [conceptId], references: [id])
+  conceptId         String
+  version           Int
+
+  formulaExpression String               @db.VarChar(2000) // DSL, ej. "SUELDO_BASE * PORC_RESPONSABILIDAD"
+  condition         String?              @db.VarChar(1000) // DSL booleana opcional, ej. "CATEGORIA_APS = 1"
+
+  // Alcance opcional: nulo = aplica a todos los régimenes/entidades.
+  laborRegime       LaborRegime?         @relation(fields: [laborRegimeId], references: [id])
+  laborRegimeId     String?
+  legalEntity       LegalEntity?         @relation(fields: [legalEntityId], references: [id])
+  legalEntityId     String?
+
+  priority          Int                  @default(500) // orden de cálculo (menor = antes)
+  effectiveFrom     DateTime
+  effectiveTo       DateTime?
+  status            PayrollFormulaStatus @default(DRAFT)
+
+  createdBy         String?              @db.VarChar(150)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  approvedBy        String?              @db.VarChar(150)
+  approvedAt        DateTime?
+
+  @@unique([conceptId, version])
 }

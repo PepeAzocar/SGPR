@@ -312,7 +312,8 @@ a {
 
 .badge.active,
 .badge.calculated,
-.badge.paid {
+.badge.paid,
+.badge.applied {
   background: #dcfce7;
   color: #166534;
 }
@@ -324,7 +325,9 @@ a {
 }
 
 .badge.terminated,
-.badge.closed {
+.badge.closed,
+.badge.inactive,
+.badge.cancelled {
   background: #fee2e2;
   color: #991b1b;
 }

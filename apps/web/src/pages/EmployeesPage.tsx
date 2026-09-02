@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
-import type { Employee } from '../api/types';
+import type { Commune, Country, Employee, Nationality, Region } from '../api/types';
 
 const DOCUMENT_TYPES = ['RUT', 'PASAPORTE', 'DNI', 'OTRO'];
 
@@ -32,7 +32,7 @@ function employeeToForm(emp: Employee): typeof emptyForm {
     secondLastName: emp.secondLastName ?? '',
     socialName: emp.socialName ?? '',
     birthDate: '',
-    nationality: '',
+    nationality: emp.nationality ?? '',
     birthCountry: emp.birthCountry ?? '',
     birthRegion: emp.birthRegion ?? '',
     birthCommune: emp.birthCommune ?? '',
@@ -48,6 +48,10 @@ export function EmployeesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [nationalities, setNationalities] = useState<Nationality[]>([]);
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [communes, setCommunes] = useState<Commune[]>([]);
 
   async function loadAll() {
     setEmployees(await api.get<Employee[]>('/employees'));
@@ -55,7 +59,23 @@ export function EmployeesPage() {
 
   useEffect(() => {
     loadAll().catch((err) => setError(err instanceof ApiError ? err.message : 'Error al cargar datos'));
+    Promise.all([
+      api.get<Nationality[]>('/nationalities'),
+      api.get<Country[]>('/countries'),
+      api.get<Region[]>('/regions'),
+      api.get<Commune[]>('/communes'),
+    ])
+      .then(([n, c, r, m]) => {
+        setNationalities(n);
+        setCountries(c);
+        setRegions(r);
+        setCommunes(m);
+      })
+      .catch(() => {});
   }, []);
+
+  const regionOptions = regions.filter((r) => r.country?.name === form.birthCountry);
+  const communeOptions = communes.filter((c) => c.region?.name === form.birthRegion && c.region?.country?.name === form.birthCountry);
 
   function startCreate() {
     setEditingId(null);
@@ -176,19 +196,58 @@ export function EmployeesPage() {
           </label>
           <label>
             Nacionalidad
-            <input value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} />
+            <select value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })}>
+              <option value="">-- Seleccionar --</option>
+              {nationalities.map((n) => (
+                <option key={n.id} value={n.name}>
+                  {n.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             País de nacimiento
-            <input value={form.birthCountry} onChange={(e) => setForm({ ...form, birthCountry: e.target.value })} />
+            <select
+              value={form.birthCountry}
+              onChange={(e) => setForm({ ...form, birthCountry: e.target.value, birthRegion: '', birthCommune: '' })}
+            >
+              <option value="">-- Seleccionar --</option>
+              {countries.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             Región de nacimiento
-            <input value={form.birthRegion} onChange={(e) => setForm({ ...form, birthRegion: e.target.value })} />
+            <select
+              value={form.birthRegion}
+              disabled={!form.birthCountry}
+              onChange={(e) => setForm({ ...form, birthRegion: e.target.value, birthCommune: '' })}
+            >
+              <option value="">-- Seleccionar --</option>
+              {regionOptions.map((r) => (
+                <option key={r.id} value={r.name}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             Comuna de nacimiento
-            <input value={form.birthCommune} onChange={(e) => setForm({ ...form, birthCommune: e.target.value })} />
+            <select
+              value={form.birthCommune}
+              disabled={!form.birthRegion}
+              onChange={(e) => setForm({ ...form, birthCommune: e.target.value })}
+            >
+              <option value="">-- Seleccionar --</option>
+              {communeOptions.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             Fotografía (URL)

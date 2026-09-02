@@ -29,6 +29,23 @@ import { CostCentersModule } from './cost-centers/cost-centers.module.js';
 import { CargosModule } from './cargos/cargos.module.js';
 import { MutualitiesModule } from './mutualities/mutualities.module.js';
 import { CcafsModule } from './ccafs/ccafs.module.js';
+import { CountriesModule } from './countries/countries.module.js';
+import { RegionsModule } from './regions/regions.module.js';
+import { CommunesModule } from './communes/communes.module.js';
+import { NationalitiesModule } from './nationalities/nationalities.module.js';
+import { LaborRegimesModule } from './labor-regimes/labor-regimes.module.js';
+import { ContractTypesModule } from './contract-types/contract-types.module.js';
+import { EventTypesModule } from './event-types/event-types.module.js';
+import { EventReasonsModule } from './event-reasons/event-reasons.module.js';
+import { EmployeeEventsModule } from './employee-events/employee-events.module.js';
+import { BanksModule } from './banks/banks.module.js';
+import { BankAccountTypesModule } from './bank-account-types/bank-account-types.module.js';
+import { PaymentMethodsModule } from './payment-methods/payment-methods.module.js';
+import { EmployeeBankAccountsModule } from './employee-bank-accounts/employee-bank-accounts.module.js';
+import { PayrollVariablesModule } from './payroll-variables/payroll-variables.module.js';
+import { PayrollParametersModule } from './payroll-parameters/payroll-parameters.module.js';
+import { PayrollTablesModule } from './payroll-tables/payroll-tables.module.js';
+import { PayrollFormulasModule } from './payroll-formulas/payroll-formulas.module.js';
 
 @Module({
   imports: [
@@ -57,6 +74,23 @@ import { CcafsModule } from './ccafs/ccafs.module.js';
     CargosModule,
     MutualitiesModule,
     CcafsModule,
+    CountriesModule,
+    RegionsModule,
+    CommunesModule,
+    NationalitiesModule,
+    LaborRegimesModule,
+    ContractTypesModule,
+    EventTypesModule,
+    EventReasonsModule,
+    EmployeeEventsModule,
+    BanksModule,
+    BankAccountTypesModule,
+    PaymentMethodsModule,
+    EmployeeBankAccountsModule,
+    PayrollVariablesModule,
+    PayrollParametersModule,
+    PayrollTablesModule,
+    PayrollFormulasModule,
   ],
   controllers: [AppController],
   providers: [

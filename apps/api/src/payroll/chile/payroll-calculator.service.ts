@@ -14,7 +14,8 @@ export interface ChileCalculationInput {
   baseSalary: number;
   otherTaxableEarnings: number;
   nonTaxableEarnings: number;
-  contractType: 'INDEFINIDO' | 'PLAZO_FIJO' | 'POR_OBRA_O_FAENA' | 'HONORARIOS';
+  // Código del catálogo ContractType (ej. 'INDEFINIDO', 'PLAZO_FIJO'), no un enum fijo.
+  contractType: string;
   afpWorkerRatePct: number;
   isFonasa: boolean;
   isapreMonthlyPlanClp: number | null;

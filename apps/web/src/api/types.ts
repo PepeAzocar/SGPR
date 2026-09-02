@@ -199,6 +199,51 @@ export interface EmployeePensionSaving {
   notes?: string | null;
 }
 
+export interface Bank {
+  id: string;
+  code: string;
+  name: string;
+  regulatorCode?: string | null;
+  isActive: boolean;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
+}
+
+export interface BankAccountType {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface PaymentMethod {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface EmployeeBankAccount {
+  id: string;
+  employeeId: string;
+  bankId: string;
+  bank?: Bank;
+  accountTypeId: string;
+  accountType?: BankAccountType;
+  paymentMethodId: string;
+  paymentMethod?: PaymentMethod;
+  accountNumber: string;
+  accountHolderName: string;
+  accountHolderRut: string;
+  currencyCode: string;
+  isPrimary: boolean;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  status: AffiliationStatus;
+  employeeEventId?: string | null;
+  notes?: string | null;
+}
+
 export interface Employee {
   id: string;
   documentType: string;
@@ -208,6 +253,7 @@ export interface Employee {
   lastName: string;
   secondLastName?: string | null;
   socialName?: string | null;
+  nationality?: string | null;
   birthCountry?: string | null;
   birthRegion?: string | null;
   birthCommune?: string | null;
@@ -217,19 +263,105 @@ export interface Employee {
   afpAffiliations?: EmployeeAfp[];
   healthAffiliations?: HealthAffiliation[];
   pensionSavings?: EmployeePensionSaving[];
+  bankAccounts?: EmployeeBankAccount[];
+}
+
+export interface LaborRegime {
+  id: string;
+  code: string;
+  name: string;
+  mainNorm?: string | null;
+  isActive: boolean;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
+}
+
+export interface ContractType {
+  id: string;
+  code: string;
+  name: string;
+  laborRegimeId: string;
+  laborRegime?: LaborRegime;
+  requiresEndDate: boolean;
+  allowsExtension: boolean;
+  allowsIndefiniteConversion: boolean;
+  payrollRelevant: boolean;
+  isActive: boolean;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
 }
 
 export interface Contract {
   id: string;
   employeeId: string;
   positionId: string;
-  type: 'INDEFINIDO' | 'PLAZO_FIJO' | 'POR_OBRA_O_FAENA' | 'HONORARIOS';
+  legalEntityId: string;
+  legalEntity?: LegalEntity;
+  laborRegimeId: string;
+  laborRegime?: LaborRegime;
+  contractTypeId: string;
+  contractType?: ContractType;
+  contractNumber: string;
+  sequenceNumber: number;
   startDate: string;
   endDate?: string | null;
   baseSalary: string;
+  weeklyHours: number;
   isActive: boolean;
   employee?: Employee;
   position?: Position;
+}
+
+export interface EventType {
+  id: string;
+  code: string;
+  name: string;
+  payrollRelevant: boolean;
+  isActive: boolean;
+}
+
+export interface EventReason {
+  id: string;
+  code: string;
+  name: string;
+  eventTypeId: string;
+  eventType?: EventType;
+  isActive: boolean;
+  displayName?: string;
+}
+
+export type EmployeeEventStatus = 'APPLIED' | 'CANCELLED';
+
+export interface EmployeeEventChange {
+  id: string;
+  employeeEventId: string;
+  fieldCode: string;
+  oldValue?: string | null;
+  newValue?: string | null;
+  oldReferenceId?: string | null;
+  newReferenceId?: string | null;
+}
+
+export interface EmployeeEvent {
+  id: string;
+  employeeId: string;
+  employee?: Employee;
+  effectiveDate: string;
+  sequenceNumber: number;
+  eventTypeId: string;
+  eventType?: EventType;
+  eventReasonId: string;
+  eventReason?: EventReason;
+  description?: string | null;
+  documentReference?: string | null;
+  laborRegimeId?: string | null;
+  laborRegime?: LaborRegime;
+  payrollRelevant: boolean;
+  retroactive: boolean;
+  status: EmployeeEventStatus;
+  changes?: EmployeeEventChange[];
+  createdBy?: string | null;
+  createdAt: string;
 }
 
 export interface Leave {
@@ -257,6 +389,7 @@ export interface PayrollConcept {
   name: string;
   type: 'EARNING' | 'DEDUCTION';
   category: string;
+  isSystem?: boolean;
 }
 
 export interface PayslipItem {
@@ -277,6 +410,40 @@ export interface Payslip {
   items?: PayslipItem[];
 }
 
+export interface Country {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface Region {
+  id: string;
+  code?: string | null;
+  name: string;
+  isActive: boolean;
+  countryId: string;
+  country?: Country;
+  displayName?: string;
+}
+
+export interface Commune {
+  id: string;
+  code?: string | null;
+  name: string;
+  isActive: boolean;
+  regionId: string;
+  region?: Region;
+  displayName?: string;
+}
+
+export interface Nationality {
+  id: string;
+  code?: string | null;
+  name: string;
+  isActive: boolean;
+}
+
 export interface EconomicIndicator {
   id: string;
   period: string;
@@ -293,4 +460,73 @@ export interface TaxBracket {
   toUtm: string | null;
   factor: string;
   deductionUtm: string;
+}
+
+export type PayrollVariableSource = 'EMPLOYEE' | 'CONTRACT' | 'INDICATOR' | 'PARAMETER' | 'TABLE' | 'SYSTEM';
+
+export interface PayrollVariable {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  source: PayrollVariableSource;
+  isActive: boolean;
+}
+
+export interface PayrollParameterValue {
+  id: string;
+  parameterId: string;
+  value: string;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+}
+
+export interface PayrollParameter {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  values?: PayrollParameterValue[];
+}
+
+export interface PayrollTableRow {
+  id: string;
+  tableId: string;
+  fromValue: string;
+  toValue?: string | null;
+  resultValue: string;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+}
+
+export interface PayrollTable {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+  rows?: PayrollTableRow[];
+}
+
+export type PayrollFormulaStatus = 'DRAFT' | 'TESTING' | 'PENDING_APPROVAL' | 'APPROVED' | 'ACTIVE' | 'INACTIVE' | 'REJECTED';
+
+export interface PayrollFormula {
+  id: string;
+  conceptId: string;
+  concept?: PayrollConcept;
+  version: number;
+  formulaExpression: string;
+  condition?: string | null;
+  laborRegimeId?: string | null;
+  laborRegime?: LaborRegime | null;
+  legalEntityId?: string | null;
+  legalEntity?: LegalEntity | null;
+  priority: number;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  status: PayrollFormulaStatus;
+  createdBy?: string | null;
+  createdAt: string;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
 }

@@ -39,6 +39,8 @@ const menuTree: NavNode[] = [
       link('/positions', 'Posiciones'),
     ]),
     link('/contracts', 'Contratos'),
+    link('/movements', 'Movimientos'),
+    link('/bank-accounts', 'Registro bancario'),
     link('/leaves', 'Ausencias'),
     link('/payroll-periods', 'Remuneraciones'),
   ]),
@@ -53,7 +55,11 @@ const menuTree: NavNode[] = [
     link('/social-credits', 'Créditos Sociales', { adminOnly: true }),
     link('/attendance-records', 'Reg. Atrasos e Inasistencia', { adminOnly: true }),
   ]),
-  group('Utilidades del sistema', [link('/catalogs', 'Catálogos')]),
+  group('Utilidades del sistema', [
+    link('/catalogs', 'Catálogos'),
+    link('/geo-catalogs', 'Catálogos geográficos'),
+    link('/payroll-formulas', 'Define Cálculo Nómina'),
+  ]),
 ];
 
 function isVisible(node: NavNode, role?: AuthUser['role']): boolean {

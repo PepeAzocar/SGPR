@@ -2,7 +2,20 @@ import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { OrgMaintainerPage, type ColumnConfig, type FieldConfig } from '../components/OrgMaintainer';
 
-type Tab = 'afp' | 'health' | 'mutuality' | 'ccaf' | 'indicators' | 'brackets';
+type Tab =
+  | 'afp'
+  | 'health'
+  | 'mutuality'
+  | 'ccaf'
+  | 'indicators'
+  | 'brackets'
+  | 'laborRegimes'
+  | 'contractTypes'
+  | 'eventTypes'
+  | 'eventReasons'
+  | 'banks'
+  | 'bankAccountTypes'
+  | 'paymentMethods';
 
 function fmtMonth(value: unknown): string {
   return value ? new Date(String(value)).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' }) : '-';
@@ -116,6 +129,118 @@ const bracketFields: FieldConfig[] = [
   { key: 'deductionUtm', label: 'Rebaja (UTM)', type: 'number', required: true },
 ];
 
+const laborRegimeColumns: ColumnConfig[] = [
+  { key: 'code', label: 'Código' },
+  { key: 'name', label: 'Nombre' },
+  { key: 'mainNorm', label: 'Norma principal' },
+  { key: 'isActive', label: 'Estado', format: (v) => (v ? 'Activo' : 'Inactivo') },
+];
+
+const laborRegimeFields: FieldConfig[] = [
+  { key: 'code', label: 'Código', type: 'text', required: true, maxLength: 30 },
+  { key: 'name', label: 'Nombre', type: 'text', required: true, maxLength: 150 },
+  { key: 'mainNorm', label: 'Norma principal', type: 'text', maxLength: 200 },
+  { key: 'isActive', label: 'Estado', type: 'boolean' },
+];
+
+const contractTypeColumns: ColumnConfig[] = [
+  { key: 'code', label: 'Código' },
+  { key: 'name', label: 'Nombre' },
+  { key: 'laborRegime.name', label: 'Régimen jurídico' },
+  { key: 'requiresEndDate', label: 'Requiere fecha término', format: (v) => (v ? 'Sí' : 'No') },
+  { key: 'payrollRelevant', label: 'Va a liquidación', format: (v) => (v ? 'Sí' : 'No') },
+  { key: 'isActive', label: 'Estado', format: (v) => (v ? 'Activo' : 'Inactivo') },
+];
+
+const contractTypeFields: FieldConfig[] = [
+  { key: 'code', label: 'Código', type: 'text', required: true, maxLength: 30 },
+  { key: 'name', label: 'Nombre', type: 'text', required: true, maxLength: 100 },
+  {
+    key: 'laborRegimeId',
+    label: 'Régimen jurídico',
+    type: 'select',
+    required: true,
+    options: { resource: '/labor-regimes', labelKey: 'name' },
+  },
+  { key: 'requiresEndDate', label: 'Requiere fecha de término', type: 'boolean' },
+  { key: 'allowsExtension', label: 'Permite prórroga', type: 'boolean' },
+  { key: 'allowsIndefiniteConversion', label: 'Permite conversión a indefinido', type: 'boolean' },
+  { key: 'payrollRelevant', label: 'Va a liquidación de sueldo', type: 'boolean' },
+  { key: 'isActive', label: 'Estado', type: 'boolean' },
+];
+
+const eventTypeColumns: ColumnConfig[] = [
+  { key: 'code', label: 'Código' },
+  { key: 'name', label: 'Nombre' },
+  { key: 'payrollRelevant', label: 'Va a liquidación', format: (v) => (v ? 'Sí' : 'No') },
+  { key: 'isActive', label: 'Estado', format: (v) => (v ? 'Activo' : 'Inactivo') },
+];
+
+const eventTypeFields: FieldConfig[] = [
+  { key: 'code', label: 'Código', type: 'text', required: true, maxLength: 40 },
+  { key: 'name', label: 'Nombre', type: 'text', required: true, maxLength: 150 },
+  { key: 'payrollRelevant', label: 'Va a liquidación de sueldo', type: 'boolean' },
+  { key: 'isActive', label: 'Estado', type: 'boolean' },
+];
+
+const eventReasonColumns: ColumnConfig[] = [
+  { key: 'code', label: 'Código' },
+  { key: 'name', label: 'Nombre' },
+  { key: 'eventType.name', label: 'Tipo de evento' },
+  { key: 'isActive', label: 'Estado', format: (v) => (v ? 'Activo' : 'Inactivo') },
+];
+
+const eventReasonFields: FieldConfig[] = [
+  { key: 'code', label: 'Código', type: 'text', required: true, maxLength: 40 },
+  { key: 'name', label: 'Nombre', type: 'text', required: true, maxLength: 150 },
+  {
+    key: 'eventTypeId',
+    label: 'Tipo de evento',
+    type: 'select',
+    required: true,
+    options: { resource: '/event-types', labelKey: 'name' },
+  },
+  { key: 'isActive', label: 'Estado', type: 'boolean' },
+];
+
+const bankColumns: ColumnConfig[] = [
+  { key: 'code', label: 'Código' },
+  { key: 'name', label: 'Nombre' },
+  { key: 'regulatorCode', label: 'Código SBIF/CMF' },
+  { key: 'isActive', label: 'Estado', format: (v) => (v ? 'Activo' : 'Inactivo') },
+];
+
+const bankFields: FieldConfig[] = [
+  { key: 'code', label: 'Código', type: 'text', required: true, maxLength: 10 },
+  { key: 'name', label: 'Nombre', type: 'text', required: true, maxLength: 100 },
+  { key: 'regulatorCode', label: 'Código SBIF/CMF', type: 'text', maxLength: 20 },
+  { key: 'isActive', label: 'Estado', type: 'boolean' },
+];
+
+const bankAccountTypeColumns: ColumnConfig[] = [
+  { key: 'code', label: 'Código' },
+  { key: 'name', label: 'Nombre' },
+  { key: 'isActive', label: 'Estado', format: (v) => (v ? 'Activo' : 'Inactivo') },
+];
+
+const bankAccountTypeFields: FieldConfig[] = [
+  { key: 'code', label: 'Código', type: 'text', required: true, maxLength: 30 },
+  { key: 'name', label: 'Nombre', type: 'text', required: true, maxLength: 100 },
+  { key: 'isActive', label: 'Estado', type: 'boolean' },
+];
+
+const paymentMethodColumns: ColumnConfig[] = [
+  { key: 'code', label: 'Código' },
+  { key: 'name', label: 'Nombre' },
+  { key: 'isActive', label: 'Estado', format: (v) => (v ? 'Activo' : 'Inactivo') },
+];
+
+const paymentMethodFields: FieldConfig[] = [
+  { key: 'code', label: 'Código', type: 'text', required: true, maxLength: 30 },
+  { key: 'name', label: 'Nombre', type: 'text', required: true, maxLength: 100 },
+  { key: 'isActive', label: 'Estado', type: 'boolean' },
+];
+
 export function CatalogsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
@@ -123,7 +248,7 @@ export function CatalogsPage() {
 
   return (
     <div>
-      <h1>Catálogos previsionales</h1>
+      <h1>Catálogos</h1>
       <div className="tabs">
         <button className={tab === 'afp' ? 'active' : ''} onClick={() => setTab('afp')}>
           AFP
@@ -136,6 +261,27 @@ export function CatalogsPage() {
         </button>
         <button className={tab === 'ccaf' ? 'active' : ''} onClick={() => setTab('ccaf')}>
           Caja de compensación
+        </button>
+        <button className={tab === 'laborRegimes' ? 'active' : ''} onClick={() => setTab('laborRegimes')}>
+          Régimen jurídico
+        </button>
+        <button className={tab === 'contractTypes' ? 'active' : ''} onClick={() => setTab('contractTypes')}>
+          Tipo de contrato
+        </button>
+        <button className={tab === 'eventTypes' ? 'active' : ''} onClick={() => setTab('eventTypes')}>
+          Tipo de evento
+        </button>
+        <button className={tab === 'eventReasons' ? 'active' : ''} onClick={() => setTab('eventReasons')}>
+          Motivo de evento
+        </button>
+        <button className={tab === 'banks' ? 'active' : ''} onClick={() => setTab('banks')}>
+          Banco
+        </button>
+        <button className={tab === 'bankAccountTypes' ? 'active' : ''} onClick={() => setTab('bankAccountTypes')}>
+          Tipo de cuenta
+        </button>
+        <button className={tab === 'paymentMethods' ? 'active' : ''} onClick={() => setTab('paymentMethods')}>
+          Forma de pago
         </button>
         {isAdmin && (
           <button className={tab === 'indicators' ? 'active' : ''} onClick={() => setTab('indicators')}>
@@ -179,6 +325,69 @@ export function CatalogsPage() {
           fields={institutionFields}
           canWrite={isAdmin}
           rowLabel={(row) => row.legalName}
+        />
+      )}
+      {tab === 'laborRegimes' && (
+        <>
+          <p className="hint">
+            Régimen jurídico de la relación laboral. Este despliegue opera bajo Código del Trabajo; el resto del
+            catálogo queda disponible por si a futuro se necesita activar un régimen estatutario.
+          </p>
+          <OrgMaintainerPage
+            title="Régimen jurídico"
+            resource="/labor-regimes"
+            columns={laborRegimeColumns}
+            fields={laborRegimeFields}
+            canWrite={isAdmin}
+          />
+        </>
+      )}
+      {tab === 'contractTypes' && (
+        <OrgMaintainerPage
+          title="Tipo de contrato"
+          resource="/contract-types"
+          columns={contractTypeColumns}
+          fields={contractTypeFields}
+          canWrite={isAdmin}
+        />
+      )}
+      {tab === 'eventTypes' && (
+        <OrgMaintainerPage
+          title="Tipo de evento"
+          resource="/event-types"
+          columns={eventTypeColumns}
+          fields={eventTypeFields}
+          canWrite={isAdmin}
+        />
+      )}
+      {tab === 'eventReasons' && (
+        <OrgMaintainerPage
+          title="Motivo de evento"
+          resource="/event-reasons"
+          columns={eventReasonColumns}
+          fields={eventReasonFields}
+          canWrite={isAdmin}
+        />
+      )}
+      {tab === 'banks' && (
+        <OrgMaintainerPage title="Banco" resource="/banks" columns={bankColumns} fields={bankFields} canWrite={isAdmin} />
+      )}
+      {tab === 'bankAccountTypes' && (
+        <OrgMaintainerPage
+          title="Tipo de cuenta"
+          resource="/bank-account-types"
+          columns={bankAccountTypeColumns}
+          fields={bankAccountTypeFields}
+          canWrite={isAdmin}
+        />
+      )}
+      {tab === 'paymentMethods' && (
+        <OrgMaintainerPage
+          title="Forma de pago"
+          resource="/payment-methods"
+          columns={paymentMethodColumns}
+          fields={paymentMethodFields}
+          canWrite={isAdmin}
         />
       )}
       {tab === 'indicators' && isAdmin && (
