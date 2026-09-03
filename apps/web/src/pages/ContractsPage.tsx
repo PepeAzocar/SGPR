@@ -1,7 +1,281 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from '../api/client';
 import { downloadListPdf } from '../lib/listPdf';
-import type { Contract, ContractType, Employee, LaborRegime, LegalEntity, Position } from '../api/types';
+import type {
+  ApsContractProfile,
+  ApsEmployeeCategory,
+  ApsHealthFacility,
+  Contract,
+  ContractType,
+  Employee,
+  LaborRegime,
+  LegalEntity,
+  Position,
+} from '../api/types';
+
+const emptyApsProfileForm = {
+  categoryId: '',
+  careerLevel: '',
+  facilityId: '',
+  weeklyHours: '',
+  baseSalaryAmount: '',
+  primaryCareAssignmentAmount: '',
+  zoneAmount: '',
+  difficultPerformanceAmount: '',
+  responsibilityAmount: '',
+  meritAmount: '',
+  specialAssignmentAmount: '',
+  postgraduateAssignmentAmount: '',
+};
+
+// Perfil remuneracional APS del contrato — sólo aplica cuando el régimen
+// jurídico del contrato es Ley N°19.378. Nunca se edita: cada guardado crea
+// una nueva versión (ver ApsContractProfilesService.create en el backend).
+function ApsContractProfilePanel({ contractId }: { contractId: string }) {
+  const [profile, setProfile] = useState<ApsContractProfile | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [categories, setCategories] = useState<ApsEmployeeCategory[]>([]);
+  const [facilities, setFacilities] = useState<ApsHealthFacility[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(emptyApsProfileForm);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    setNotFound(false);
+    try {
+      setProfile(await api.get<ApsContractProfile>(`/contracts/${contractId}/aps-profile`));
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        setProfile(null);
+        setNotFound(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Error al cargar el perfil APS');
+      }
+    }
+  }
+
+  useEffect(() => {
+    load();
+    Promise.all([
+      api.get<ApsEmployeeCategory[]>('/aps-employee-categories').then(setCategories),
+      api.get<ApsHealthFacility[]>('/aps-health-facilities').then(setFacilities),
+    ]).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractId]);
+
+  function startNewVersion() {
+    setForm(
+      profile
+        ? {
+            categoryId: profile.categoryId,
+            careerLevel: String(profile.careerLevel),
+            facilityId: profile.facilityId,
+            weeklyHours: String(profile.weeklyHours),
+            baseSalaryAmount: profile.baseSalaryAmount,
+            primaryCareAssignmentAmount: profile.primaryCareAssignmentAmount ?? '',
+            zoneAmount: profile.zoneAmount ?? '',
+            difficultPerformanceAmount: profile.difficultPerformanceAmount ?? '',
+            responsibilityAmount: profile.responsibilityAmount ?? '',
+            meritAmount: profile.meritAmount ?? '',
+            specialAssignmentAmount: profile.specialAssignmentAmount ?? '',
+            postgraduateAssignmentAmount: profile.postgraduateAssignmentAmount ?? '',
+          }
+        : emptyApsProfileForm,
+    );
+    setShowForm(true);
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const num = (v: string) => (v === '' ? undefined : Number(v));
+    try {
+      await api.post(`/contracts/${contractId}/aps-profile`, {
+        categoryId: form.categoryId,
+        careerLevel: Number(form.careerLevel),
+        facilityId: form.facilityId,
+        weeklyHours: Number(form.weeklyHours),
+        baseSalaryAmount: Number(form.baseSalaryAmount),
+        primaryCareAssignmentAmount: num(form.primaryCareAssignmentAmount),
+        zoneAmount: num(form.zoneAmount),
+        difficultPerformanceAmount: num(form.difficultPerformanceAmount),
+        responsibilityAmount: num(form.responsibilityAmount),
+        meritAmount: num(form.meritAmount),
+        specialAssignmentAmount: num(form.specialAssignmentAmount),
+        postgraduateAssignmentAmount: num(form.postgraduateAssignmentAmount),
+      });
+      setShowForm(false);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo guardar el perfil APS');
+    }
+  }
+
+  return (
+    <div className="card">
+      <div className="page-header">
+        <h3 style={{ margin: 0 }}>Perfil remuneracional APS (Ley N°19.378)</h3>
+        <button type="button" onClick={() => (showForm ? setShowForm(false) : startNewVersion())}>
+          {showForm ? 'Cancelar' : profile ? 'Nueva versión' : 'Crear perfil'}
+        </button>
+      </div>
+      {error && <p className="error">{error}</p>}
+
+      {!showForm && notFound && <p className="hint">Este contrato aún no tiene un perfil remuneracional APS.</p>}
+
+      {!showForm && profile && (
+        <table className="table">
+          <tbody>
+            <tr>
+              <td>Categoría</td>
+              <td>{profile.category?.name ?? profile.categoryId}</td>
+            </tr>
+            <tr>
+              <td>Nivel de carrera</td>
+              <td>{profile.careerLevel}</td>
+            </tr>
+            <tr>
+              <td>Establecimiento</td>
+              <td>{profile.facility?.name ?? profile.facilityId}</td>
+            </tr>
+            <tr>
+              <td>Horas semanales</td>
+              <td>{profile.weeklyHours}</td>
+            </tr>
+            <tr>
+              <td>Sueldo base</td>
+              <td>${Number(profile.baseSalaryAmount).toLocaleString('es-CL')}</td>
+            </tr>
+            <tr>
+              <td>Total asignaciones APS</td>
+              <td>${Number(profile.totalApsAssignments).toLocaleString('es-CL')}</td>
+            </tr>
+            <tr>
+              <td>Versión</td>
+              <td>
+                {profile.version} · <span className={`badge ${profile.status.toLowerCase()}`}>{profile.status}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+
+      {showForm && (
+        <form className="form-grid" onSubmit={handleSubmit}>
+          <label>
+            Categoría funcionaria
+            <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} required>
+              <option value="">Seleccionar...</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.code} — {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Nivel de carrera (1–15)
+            <input
+              type="number"
+              min={1}
+              max={15}
+              value={form.careerLevel}
+              onChange={(e) => setForm({ ...form, careerLevel: e.target.value })}
+              required
+            />
+          </label>
+          <label>
+            Establecimiento
+            <select value={form.facilityId} onChange={(e) => setForm({ ...form, facilityId: e.target.value })} required>
+              <option value="">Seleccionar...</option>
+              {facilities.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Horas semanales
+            <input
+              type="number"
+              min={1}
+              value={form.weeklyHours}
+              onChange={(e) => setForm({ ...form, weeklyHours: e.target.value })}
+              required
+            />
+          </label>
+          <label>
+            Sueldo base (CLP)
+            <input
+              type="number"
+              min={0}
+              value={form.baseSalaryAmount}
+              onChange={(e) => setForm({ ...form, baseSalaryAmount: e.target.value })}
+              required
+            />
+          </label>
+          <label>
+            Asignación APS municipal
+            <input
+              type="number"
+              min={0}
+              value={form.primaryCareAssignmentAmount}
+              onChange={(e) => setForm({ ...form, primaryCareAssignmentAmount: e.target.value })}
+            />
+          </label>
+          <label>
+            Asignación de zona
+            <input type="number" min={0} value={form.zoneAmount} onChange={(e) => setForm({ ...form, zoneAmount: e.target.value })} />
+          </label>
+          <label>
+            Desempeño difícil
+            <input
+              type="number"
+              min={0}
+              value={form.difficultPerformanceAmount}
+              onChange={(e) => setForm({ ...form, difficultPerformanceAmount: e.target.value })}
+            />
+          </label>
+          <label>
+            Responsabilidad directiva
+            <input
+              type="number"
+              min={0}
+              value={form.responsibilityAmount}
+              onChange={(e) => setForm({ ...form, responsibilityAmount: e.target.value })}
+            />
+          </label>
+          <label>
+            Mérito
+            <input type="number" min={0} value={form.meritAmount} onChange={(e) => setForm({ ...form, meritAmount: e.target.value })} />
+          </label>
+          <label>
+            Asignación especial transitoria
+            <input
+              type="number"
+              min={0}
+              value={form.specialAssignmentAmount}
+              onChange={(e) => setForm({ ...form, specialAssignmentAmount: e.target.value })}
+            />
+          </label>
+          <label>
+            Asignación de postgrado
+            <input
+              type="number"
+              min={0}
+              value={form.postgraduateAssignmentAmount}
+              onChange={(e) => setForm({ ...form, postgraduateAssignmentAmount: e.target.value })}
+            />
+          </label>
+          <div className="form-actions">
+            <button type="submit">Guardar nueva versión</button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
 
 type Mode = 'closed' | 'create' | 'edit' | 'view';
 
@@ -77,6 +351,8 @@ export function ContractsPage() {
 
   const contractTypeOptions = contractTypes.filter((ct) => ct.laborRegimeId === form.laborRegimeId);
   const readOnly = mode === 'view';
+  const selectedLaborRegime = laborRegimes.find((lr) => lr.id === form.laborRegimeId);
+  const isApsRegime = selectedLaborRegime?.code === 'LEY_19378';
 
   function startCreate() {
     setEditingId(null);
@@ -336,6 +612,8 @@ export function ContractsPage() {
           </div>
         </form>
       )}
+
+      {mode !== 'closed' && mode !== 'create' && editingId && isApsRegime && <ApsContractProfilePanel contractId={editingId} />}
 
       <table className="table">
         <thead>

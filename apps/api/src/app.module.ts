@@ -47,6 +47,7 @@ import { PayrollParametersModule } from './payroll-parameters/payroll-parameters
 import { PayrollTablesModule } from './payroll-tables/payroll-tables.module.js';
 import { PayrollFormulasModule } from './payroll-formulas/payroll-formulas.module.js';
 import { ContractDocumentsModule } from './contract-documents/contract-documents.module.js';
+import { ApsModule } from './aps/aps.module.js';
 
 @Module({
   imports: [
@@ -93,6 +94,7 @@ import { ContractDocumentsModule } from './contract-documents/contract-documents
     PayrollTablesModule,
     PayrollFormulasModule,
     ContractDocumentsModule,
+    ApsModule,
   ],
   controllers: [AppController],
   providers: [

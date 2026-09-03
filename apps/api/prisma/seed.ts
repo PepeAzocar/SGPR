@@ -1170,6 +1170,126 @@ async function main() {
     create: { matrixId: contractMatrix.id, clauseId: claRemuneracion.id, sequence: 2, mandatory: true },
   });
 
+  // --- Carrera Funcionaria APS (Ley N°19.378) — catálogos base ---
+  // Sólo se siembran catálogos de clasificación (universales, definidos por la
+  // ley/reglamento): categorías, tipos de capacitación e institución. NO se
+  // siembran niveles de carrera, tramos de puntaje ni escalas de sueldo base
+  // (ApsCareerLevel/ApsBaseSalaryScale/ApsNationalMinimumBaseSalary): esas
+  // cifras dependen de la entidad administradora y de la normativa vigente al
+  // momento de implantar, y deben cargarse desde el mantenedor con las cifras
+  // reales — no corresponde adivinarlas aquí, a diferencia de un ejemplo de
+  // comisión AFP.
+  const laborRegimeAps = await prisma.laborRegime.findUniqueOrThrow({ where: { code: 'LEY_19378' } });
+
+  const apsCategories = [
+    { code: 'A', name: 'Médicos Cirujanos, Farmacéuticos, Químico-Farmacéuticos, Bioquímicos y Cirujano-Dentistas', qualificationLevel: 'Profesional', professionalRequired: true },
+    { code: 'B', name: 'Otros profesionales', qualificationLevel: 'Profesional', professionalRequired: true },
+    { code: 'C', name: 'Técnicos de nivel superior', qualificationLevel: 'Técnico de nivel superior', professionalRequired: false },
+    { code: 'D', name: 'Técnicos de Salud', qualificationLevel: 'Técnico', professionalRequired: false },
+    { code: 'E', name: 'Administrativos de Salud', qualificationLevel: 'Administrativo', professionalRequired: false },
+    { code: 'F', name: 'Auxiliares de servicios de Salud', qualificationLevel: 'Auxiliar', professionalRequired: false },
+  ];
+  for (const cat of apsCategories) {
+    await prisma.apsEmployeeCategory.upsert({
+      where: { code: cat.code },
+      update: {},
+      create: { ...cat, effectiveFrom },
+    });
+  }
+
+  // Tipos contractuales propios del Estatuto APS (la tabla ContractType ya
+  // existe y es genérica por régimen — sólo se agregan filas nuevas).
+  const apsContractTypes = [
+    { code: 'TITULAR', name: 'Titular', requiresEndDate: false, allowsExtension: false, allowsIndefiniteConversion: false },
+    { code: 'CONTRATA', name: 'Contrata', requiresEndDate: true, allowsExtension: true, allowsIndefiniteConversion: false },
+    { code: 'SUPLENTE', name: 'Suplente', requiresEndDate: true, allowsExtension: true, allowsIndefiniteConversion: false },
+  ];
+  for (const ct of apsContractTypes) {
+    await prisma.contractType.upsert({
+      where: { laborRegimeId_code: { laborRegimeId: laborRegimeAps.id, code: ct.code } },
+      update: {},
+      create: { ...ct, laborRegimeId: laborRegimeAps.id, payrollRelevant: true, effectiveFrom },
+    });
+  }
+
+  // --- Tipos y niveles de capacitación (Reglamento de Carrera Funcionaria) ---
+  const apsTrainingTypes = [
+    { code: 'COURSE', name: 'Curso' },
+    { code: 'INTERNSHIP', name: 'Pasantía' },
+    { code: 'WORKSHOP', name: 'Taller' },
+    { code: 'SEMINAR', name: 'Seminario' },
+    { code: 'DIPLOMA', name: 'Diplomado' },
+    { code: 'SPECIALIZATION', name: 'Especialización' },
+    { code: 'MISSION_STUDY', name: 'Estadía / misión de estudio' },
+    { code: 'CONGRESS', name: 'Congreso' },
+    { code: 'OTHER', name: 'Otro' },
+  ];
+  for (const t of apsTrainingTypes) {
+    await prisma.apsTrainingType.upsert({ where: { code: t.code }, update: {}, create: t });
+  }
+
+  // Factores de nivel técnico según reglamento: bajo 1,0 / medio 1,1 / alto 1,2.
+  const apsTechnicalLevels = [
+    { code: 'LOW', name: 'Bajo', factor: 1.0 },
+    { code: 'MEDIUM', name: 'Medio', factor: 1.1 },
+    { code: 'HIGH', name: 'Alto', factor: 1.2 },
+  ];
+  for (const l of apsTechnicalLevels) {
+    await prisma.apsTrainingTechnicalLevel.upsert({ where: { code: l.code }, update: {}, create: { ...l, effectiveFrom } });
+  }
+
+  // EJEMPLO: notas de corte de evaluación — el reglamento pondera con factores
+  // entre 0,4 y 1,0; las notas de corte deben confirmarse contra el texto
+  // vigente antes de usarse en producción (igual advertencia que AFP/UF/UTM).
+  const apsEvaluationLevels = [
+    { code: 'MINIMUM', name: 'Mínima', minimumGrade: 4.0, maximumGrade: 4.9, factor: 0.4 },
+    { code: 'MEDIUM', name: 'Media', minimumGrade: 5.0, maximumGrade: 5.9, factor: 0.7 },
+    { code: 'MAXIMUM', name: 'Máxima', minimumGrade: 6.0, maximumGrade: 7.0, factor: 1.0 },
+  ];
+  for (const e of apsEvaluationLevels) {
+    await prisma.apsTrainingEvaluationLevel.upsert({ where: { code: e.code }, update: {}, create: { ...e, effectiveFrom } });
+  }
+
+  // --- Tipos de institución y de formación académica ---
+  const educationInstitutionTypes = [
+    { code: 'UNIVERSITY', name: 'Universidad' },
+    { code: 'PROFESSIONAL_INSTITUTE', name: 'Instituto Profesional' },
+    { code: 'TECHNICAL_TRAINING_CENTER', name: 'Centro de Formación Técnica' },
+    { code: 'MINSAL', name: 'Ministerio de Salud' },
+    { code: 'HEALTH_SERVICE', name: 'Servicio de Salud' },
+    { code: 'MUNICIPALITY', name: 'Municipalidad' },
+    { code: 'MUNICIPAL_CORPORATION', name: 'Corporación Municipal' },
+    { code: 'OTEC', name: 'Organismo Técnico de Capacitación (OTEC)' },
+    { code: 'PUBLIC_INSTITUTION', name: 'Institución pública' },
+    { code: 'PRIVATE_INSTITUTION', name: 'Institución privada' },
+    { code: 'INTERNATIONAL_INSTITUTION', name: 'Institución internacional' },
+  ];
+  for (const it of educationInstitutionTypes) {
+    await prisma.educationInstitutionType.upsert({ where: { code: it.code }, update: {}, create: it });
+  }
+
+  const educationTypes = [
+    { code: 'TECHNICAL_TITLE', name: 'Título técnico', countsForApsCareer: true },
+    { code: 'PROFESSIONAL_TITLE', name: 'Título profesional', countsForApsCareer: true },
+    { code: 'BACHELOR', name: 'Bachillerato', countsForApsCareer: false },
+    { code: 'LICENCIATURA', name: 'Licenciatura', countsForApsCareer: false },
+    { code: 'SPECIALTY', name: 'Especialidad', countsForApsCareer: true },
+    { code: 'DIPLOMA', name: 'Diplomado', countsForApsCareer: true },
+    { code: 'POSTGRADUATE_DIPLOMA', name: 'Diplomado de postgrado', countsForApsCareer: true },
+    { code: 'MASTER', name: 'Magíster', countsForApsCareer: true },
+    { code: 'DOCTORATE', name: 'Doctorado', countsForApsCareer: true },
+    { code: 'POSTDOCTORATE', name: 'Postdoctorado', countsForApsCareer: true },
+    { code: 'COURSE', name: 'Curso', countsForApsCareer: true },
+    { code: 'INTERNSHIP', name: 'Pasantía', countsForApsCareer: true },
+    { code: 'SEMINAR', name: 'Seminario', countsForApsCareer: true },
+    { code: 'WORKSHOP', name: 'Taller', countsForApsCareer: true },
+    { code: 'CONGRESS', name: 'Congreso', countsForApsCareer: false },
+    { code: 'OTHER', name: 'Otro', countsForApsCareer: false },
+  ];
+  for (const et of educationTypes) {
+    await prisma.educationType.upsert({ where: { code: et.code }, update: {}, create: et });
+  }
+
   console.log('Seed completado.');
 }
 

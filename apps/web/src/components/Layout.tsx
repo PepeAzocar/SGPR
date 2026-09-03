@@ -43,6 +43,8 @@ const menuTree: NavNode[] = [
     link('/bank-accounts', 'Registro bancario'),
     link('/leaves', 'Ausencias'),
     link('/payroll-periods', 'Remuneraciones'),
+    link('/aps-training-years', 'Control de Capacitación'),
+    link('/aps-bienniums', 'Control bienal'),
   ]),
   group('Servicio de Nómina', [
     link('/cost-centers', 'Centros de costo', { adminOnly: true }),
@@ -61,6 +63,7 @@ const menuTree: NavNode[] = [
     link('/geo-catalogs', 'Catálogos geográficos'),
     link('/payroll-formulas', 'Define Cálculo Nómina'),
     link('/contract-documents', 'Gestión Contractual'),
+    link('/aps-catalogs', 'Carrera Funcionaria APS'),
   ]),
 ];
 

@@ -73,14 +73,23 @@ model LegalEntity {
   legalRepresentativeName String? @db.VarChar(200)
   legalRepresentativeRut  String? @db.VarChar(12)
 
-  businessUnits BusinessUnit[]
-  costCenters   CostCenter[]
-  contracts     Contract[]
-  payrollFormulas PayrollFormula[]
-  createdBy     String?       @db.VarChar(150)
-  updatedBy     String?       @db.VarChar(150)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  businessUnits                  BusinessUnit[]
+  costCenters                    CostCenter[]
+  contracts                      Contract[]
+  payrollFormulas                PayrollFormula[]
+  createdBy                      String?                         @db.VarChar(150)
+  updatedBy                      String?                         @db.VarChar(150)
+  createdAt                      DateTime                        @default(now())
+  updatedAt                      DateTime                        @updatedAt
+  apsAdministrativeEntityProfile ApsAdministrativeEntityProfile?
+  apsHealthFacilities            ApsHealthFacility[]
+  apsCareerLevels                ApsCareerLevel[]
+  apsBaseSalaryScales            ApsBaseSalaryScale[]
+  apsCareers                     ApsCareer[]
+  apsExperienceRules             ApsExperienceRule[]
+  apsMunicipalTrainingPrograms   ApsMunicipalTrainingProgram[]
+  apsStaffingPositions           ApsStaffingPosition[]
+  apsSpecialTemporaryAssignments ApsSpecialTemporaryAssignment[]
 }
 
 model BusinessUnit {
@@ -92,39 +101,40 @@ model BusinessUnit {
   effectiveTo   DateTime?
   status        OrgUnitStatus @default(ACTIVE)
 
-  legalEntity   LegalEntity   @relation(fields: [legalEntityId], references: [id])
+  legalEntity   LegalEntity @relation(fields: [legalEntityId], references: [id])
   legalEntityId String
 
-  divisions     Division[]
+  divisions Division[]
 
-  createdBy     String?       @db.VarChar(150)
-  updatedBy     String?       @db.VarChar(150)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Division {
-  id              String        @id @default(cuid())
-  code            String        @unique @db.VarChar(50)
-  name            String        @db.VarChar(150)
-  description     String?       @db.VarChar(500)
-  effectiveFrom   DateTime
-  effectiveTo     DateTime?
-  status          OrgUnitStatus @default(ACTIVE)
+  id            String        @id @default(cuid())
+  code          String        @unique @db.VarChar(50)
+  name          String        @db.VarChar(150)
+  description   String?       @db.VarChar(500)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        OrgUnitStatus @default(ACTIVE)
 
-  businessUnit    BusinessUnit  @relation(fields: [businessUnitId], references: [id])
-  businessUnitId  String
+  businessUnit   BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  businessUnitId String
 
-  parent          Division?     @relation("DivisionToParent", fields: [parentDivisionId], references: [id])
+  parent           Division?  @relation("DivisionToParent", fields: [parentDivisionId], references: [id])
   parentDivisionId String?
-  children        Division[]    @relation("DivisionToParent")
+  children         Division[] @relation("DivisionToParent")
 
-  departments     Department[]
+  departments Department[]
 
-  createdBy       String?       @db.VarChar(150)
-  updatedBy       String?       @db.VarChar(150)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdBy           String?             @db.VarChar(150)
+  updatedBy           String?             @db.VarChar(150)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  apsHealthFacilities ApsHealthFacility[]
 }
 
 model CostCenter {
@@ -136,23 +146,23 @@ model CostCenter {
   effectiveTo   DateTime?
   status        OrgUnitStatus @default(ACTIVE)
 
-  legalEntity   LegalEntity?  @relation(fields: [legalEntityId], references: [id])
+  legalEntity   LegalEntity? @relation(fields: [legalEntityId], references: [id])
   legalEntityId String?
 
-  parent        CostCenter?   @relation("CostCenterToParent", fields: [parentId], references: [id])
-  parentId      String?
-  children      CostCenter[]  @relation("CostCenterToParent")
+  parent   CostCenter?  @relation("CostCenterToParent", fields: [parentId], references: [id])
+  parentId String?
+  children CostCenter[] @relation("CostCenterToParent")
 
   manager           Employee? @relation("CostCenterManager", fields: [managerEmployeeId], references: [id])
   managerEmployeeId String?
 
-  departments   Department[]
-  positions     Position[]
+  departments Department[]
+  positions   Position[]
 
-  createdBy     String?       @db.VarChar(150)
-  updatedBy     String?       @db.VarChar(150)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Clasificación de puesto reutilizable (ej. "Analista de Remuneraciones",
@@ -166,38 +176,41 @@ model Cargo {
   effectiveTo   DateTime?
   status        OrgUnitStatus @default(ACTIVE)
 
-  positions     Position[]
+  positions Position[]
 
-  createdBy     String?       @db.VarChar(150)
-  updatedBy     String?       @db.VarChar(150)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdBy                    String?                       @db.VarChar(150)
+  updatedBy                    String?                       @db.VarChar(150)
+  createdAt                    DateTime                      @default(now())
+  updatedAt                    DateTime                      @updatedAt
+  apsStaffingPositions         ApsStaffingPosition[]
+  apsEmployeeAssignments       ApsEmployeeAssignment[]
+  apsResponsibilityAssignments ApsResponsibilityAssignment[]
 }
 
 model Department {
-  id            String         @id @default(cuid())
-  code          String?        @unique @db.VarChar(50)
+  id            String        @id @default(cuid())
+  code          String?       @unique @db.VarChar(50)
   name          String
-  description   String?        @db.VarChar(500)
+  description   String?       @db.VarChar(500)
   effectiveFrom DateTime?
   effectiveTo   DateTime?
-  status        OrgUnitStatus  @default(ACTIVE)
+  status        OrgUnitStatus @default(ACTIVE)
 
-  division      Division?      @relation(fields: [divisionId], references: [id])
-  divisionId    String?
+  division   Division? @relation(fields: [divisionId], references: [id])
+  divisionId String?
 
-  costCenter    CostCenter?    @relation(fields: [costCenterId], references: [id])
-  costCenterId  String?
+  costCenter   CostCenter? @relation(fields: [costCenterId], references: [id])
+  costCenterId String?
 
-  parent        Department?    @relation("DepartmentToParent", fields: [parentId], references: [id])
-  parentId      String?
-  children      Department[]   @relation("DepartmentToParent")
-  positions     Position[]
+  parent    Department?  @relation("DepartmentToParent", fields: [parentId], references: [id])
+  parentId  String?
+  children  Department[] @relation("DepartmentToParent")
+  positions Position[]
 
-  createdBy     String?        @db.VarChar(150)
-  updatedBy     String?        @db.VarChar(150)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Position {
@@ -209,21 +222,21 @@ model Position {
   effectiveTo   DateTime?
   status        OrgUnitStatus @default(ACTIVE)
 
-  department    Department    @relation(fields: [departmentId], references: [id])
-  departmentId  String
+  department   Department @relation(fields: [departmentId], references: [id])
+  departmentId String
 
-  cargo         Cargo?        @relation(fields: [cargoId], references: [id])
-  cargoId       String?
+  cargo   Cargo?  @relation(fields: [cargoId], references: [id])
+  cargoId String?
 
-  costCenter    CostCenter?   @relation(fields: [costCenterId], references: [id])
-  costCenterId  String?
+  costCenter   CostCenter? @relation(fields: [costCenterId], references: [id])
+  costCenterId String?
 
-  contracts     Contract[]
+  contracts Contract[]
 
-  createdBy     String?       @db.VarChar(150)
-  updatedBy     String?       @db.VarChar(150)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ---------------------------------------------------------------------------
@@ -239,54 +252,61 @@ model Position {
 // ---------------------------------------------------------------------------
 
 model Country {
-  id        String   @id @default(cuid())
-  code      String   @unique @db.VarChar(10)
-  name      String   @unique @db.VarChar(100)
-  isActive  Boolean  @default(true)
+  id       String  @id @default(cuid())
+  code     String  @unique @db.VarChar(10)
+  name     String  @unique @db.VarChar(100)
+  isActive Boolean @default(true)
 
-  regions   Region[]
+  regions Region[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
+  educationInstitutions       EducationInstitution[]
+  employeeAcademicBackgrounds EmployeeAcademicBackground[]
 }
 
 model Region {
-  id        String   @id @default(cuid())
-  code      String?  @db.VarChar(20)
-  name      String   @db.VarChar(100)
-  isActive  Boolean  @default(true)
+  id       String  @id @default(cuid())
+  code     String? @db.VarChar(20)
+  name     String  @db.VarChar(100)
+  isActive Boolean @default(true)
 
-  country   Country  @relation(fields: [countryId], references: [id])
+  country   Country @relation(fields: [countryId], references: [id])
   countryId String
 
-  communes  Commune[]
+  communes Commune[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt                       DateTime                         @default(now())
+  updatedAt                       DateTime                         @updatedAt
+  apsAdministrativeEntityProfiles ApsAdministrativeEntityProfile[]
+  apsHealthServices               ApsHealthService[]
 
   @@unique([countryId, name])
 }
 
 model Commune {
-  id        String   @id @default(cuid())
-  code      String?  @db.VarChar(20)
-  name      String   @db.VarChar(100)
-  isActive  Boolean  @default(true)
+  id       String  @id @default(cuid())
+  code     String? @db.VarChar(20)
+  name     String  @db.VarChar(100)
+  isActive Boolean @default(true)
 
-  region    Region   @relation(fields: [regionId], references: [id])
-  regionId  String
+  region   Region @relation(fields: [regionId], references: [id])
+  regionId String
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt                       DateTime                         @default(now())
+  updatedAt                       DateTime                         @updatedAt
+  apsAdministrativeEntityProfiles ApsAdministrativeEntityProfile[]
+  apsHealthFacilities             ApsHealthFacility[]
+  apsZoneAssignments              ApsZoneAssignment[]
 
   @@unique([regionId, name])
 }
 
 model Nationality {
-  id        String   @id @default(cuid())
-  code      String?  @db.VarChar(10)
-  name      String   @unique @db.VarChar(100)
-  isActive  Boolean  @default(true)
+  id       String  @id @default(cuid())
+  code     String? @db.VarChar(10)
+  name     String  @unique @db.VarChar(100)
+  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -318,54 +338,70 @@ enum MaritalStatus {
 }
 
 model Employee {
-  id             String          @id @default(cuid())
+  id String @id @default(cuid())
 
   // Identificación
-  documentType   String          @db.VarChar(20) // tipo_documento: RUT, PASAPORTE, DNI, etc.
-  documentNumber String          @db.VarChar(30) // numero_documento: valor del documento tal como fue ingresado
-  rut            String?         @unique @db.VarChar(12) // condicional: solo cuando documentType = RUT, formato 12.345.678-9
+  documentType   String  @db.VarChar(20) // tipo_documento: RUT, PASAPORTE, DNI, etc.
+  documentNumber String  @db.VarChar(30) // numero_documento: valor del documento tal como fue ingresado
+  rut            String? @unique @db.VarChar(12) // condicional: solo cuando documentType = RUT, formato 12.345.678-9
 
   firstName      String
   lastName       String
   secondLastName String?
-  socialName     String?         @db.VarChar(150) // nombre_social
+  socialName     String?        @db.VarChar(150) // nombre_social
   birthDate      DateTime?
-  gender         Gender          @default(UNSPECIFIED)
+  gender         Gender         @default(UNSPECIFIED)
   maritalStatus  MaritalStatus?
-  nationality    String?         @default("Chilena")
-  birthCountry   String?         @db.VarChar(80) // pais_nacimiento
-  birthRegion    String?         @db.VarChar(80) // region_nacimiento
-  birthCommune   String?         @db.VarChar(80) // comuna_nacimiento
-  photoUrl       String?         @db.Text // fotografia_url: data URL (imagen comprimida en base64, ver EmployeePhotoCapture en el frontend)
+  nationality    String?        @default("Chilena")
+  birthCountry   String?        @db.VarChar(80) // pais_nacimiento
+  birthRegion    String?        @db.VarChar(80) // region_nacimiento
+  birthCommune   String?        @db.VarChar(80) // comuna_nacimiento
+  photoUrl       String?        @db.Text // fotografia_url: data URL (imagen comprimida en base64, ver EmployeePhotoCapture en el frontend)
 
-  email          String?         @unique
-  phone          String?
-  address        String?
-  commune        String?
-  region         String?
-  bankName       String?
-  bankAccountType String?
+  email             String? @unique
+  phone             String?
+  address           String?
+  commune           String?
+  region            String?
+  bankName          String?
+  bankAccountType   String?
   bankAccountNumber String?
 
-  status         EmployeeStatus  @default(ACTIVE)
+  status EmployeeStatus @default(ACTIVE)
 
   // AFP, salud y ahorro previsional ya no son atributos fijos del empleado:
   // son datos con vigencia histórica, ver EmployeeAfp / HealthAffiliation / EmployeePensionSaving.
-  afpAffiliations     EmployeeAfp[]
-  healthAffiliations  HealthAffiliation[]
-  pensionSavings      EmployeePensionSaving[]
+  afpAffiliations    EmployeeAfp[]
+  healthAffiliations HealthAffiliation[]
+  pensionSavings     EmployeePensionSaving[]
 
-  contracts      Contract[]
-  events         EmployeeEvent[]
-  bankAccounts   EmployeeBankAccount[]
-  leaves         Leave[]
-  user           User?
-  managedCostCenters CostCenter[] @relation("CostCenterManager")
+  contracts          Contract[]
+  events             EmployeeEvent[]
+  bankAccounts       EmployeeBankAccount[]
+  leaves             Leave[]
+  user               User?
+  managedCostCenters CostCenter[]          @relation("CostCenterManager")
   generatedDocuments GeneratedDocument[]
-  payrollResults PayrollResult[]
+  payrollResults     PayrollResult[]
 
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt                        DateTime                          @default(now())
+  updatedAt                        DateTime                          @updatedAt
+  apsCareer                        ApsCareer?
+  apsCareerHistories               ApsCareerHistory[]
+  apsRecognizedServices            ApsRecognizedService[]
+  apsServiceExclusions             ApsServiceExclusion[]
+  apsBienniums                     ApsBiennium[]
+  employeeApsTrainings             EmployeeApsTraining[]
+  apsEmployeeTrainingYears         ApsEmployeeTrainingYear[]
+  employeeAcademicBackgrounds      EmployeeAcademicBackground[]
+  apsPostgraduates                 ApsPostgraduate[]
+  apsPerformanceEvaluations        ApsPerformanceEvaluation[]
+  apsMeritAssignments              ApsMeritAssignment[]
+  apsEmployeeAssignments           ApsEmployeeAssignment[]
+  apsWorkSchedules                 ApsWorkSchedule[]
+  apsResponsibilityAssignments     ApsResponsibilityAssignment[]
+  apsEmployeeDifficultPerformances ApsEmployeeDifficultPerformance[]
+  employeeApsZoneAssignments       EmployeeApsZoneAssignment[]
 }
 
 // ---------------------------------------------------------------------------
@@ -385,22 +421,23 @@ model Employee {
 // vigencia normativa: no se asume que la realidad actual (o futura) quede
 // cubierta únicamente por un único estatuto.
 model LaborRegime {
-  id            String         @id @default(cuid())
-  code          String         @unique @db.VarChar(30) // ej. CODIGO_TRABAJO, LEY_19070, LEY_19378
-  name          String         @db.VarChar(150)
-  mainNorm      String?        @db.VarChar(200) // norma_principal, ej. "DFL N°1 - Código del Trabajo"
-  isActive      Boolean        @default(true)
+  id            String    @id @default(cuid())
+  code          String    @unique @db.VarChar(30) // ej. CODIGO_TRABAJO, LEY_19070, LEY_19378
+  name          String    @db.VarChar(150)
+  mainNorm      String?   @db.VarChar(200) // norma_principal, ej. "DFL N°1 - Código del Trabajo"
+  isActive      Boolean   @default(true)
   effectiveFrom DateTime?
   effectiveTo   DateTime?
 
-  contractTypes ContractType[]
-  contracts     Contract[]
-  employeeEvents EmployeeEvent[]
-  payrollFormulas PayrollFormula[]
+  contractTypes    ContractType[]
+  contracts        Contract[]
+  employeeEvents   EmployeeEvent[]
+  payrollFormulas  PayrollFormula[]
   contractMatrices ContractMatrix[]
 
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  legalParameters LegalParameter[]
 }
 
 // Tipo contractual dentro de un régimen jurídico (ej. INDEFINIDO/PLAZO_FIJO
@@ -408,59 +445,60 @@ model LaborRegime {
 // agregar tipos nuevos (incluidos los de regímenes estatutarios futuros) sin
 // una migración de esquema.
 model ContractType {
-  id                         String       @id @default(cuid())
-  code                       String       @db.VarChar(30) // ej. INDEFINIDO, PLAZO_FIJO
-  name                       String       @db.VarChar(100)
+  id   String @id @default(cuid())
+  code String @db.VarChar(30) // ej. INDEFINIDO, PLAZO_FIJO
+  name String @db.VarChar(100)
 
-  laborRegime                LaborRegime  @relation(fields: [laborRegimeId], references: [id])
-  laborRegimeId              String
+  laborRegime   LaborRegime @relation(fields: [laborRegimeId], references: [id])
+  laborRegimeId String
 
-  requiresEndDate            Boolean      @default(false)
-  allowsExtension            Boolean      @default(false)
-  allowsIndefiniteConversion Boolean      @default(false)
-  payrollRelevant            Boolean      @default(true) // ej. honorarios no pasa por el motor de liquidaciones
+  requiresEndDate            Boolean @default(false)
+  allowsExtension            Boolean @default(false)
+  allowsIndefiniteConversion Boolean @default(false)
+  payrollRelevant            Boolean @default(true) // ej. honorarios no pasa por el motor de liquidaciones
 
-  isActive                   Boolean      @default(true)
-  effectiveFrom               DateTime?
-  effectiveTo                DateTime?
+  isActive      Boolean   @default(true)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
 
-  contracts                  Contract[]
-  contractMatrices           ContractMatrix[]
+  contracts        Contract[]
+  contractMatrices ContractMatrix[]
 
-  createdAt                  DateTime     @default(now())
-  updatedAt                  DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([laborRegimeId, code])
 }
 
 model Contract {
-  id             String       @id @default(cuid())
-  contractNumber String       @db.VarChar(30) // número interno, único por entidad empleadora
-  sequenceNumber Int          @default(1) // secuencia efectiva del contrato para esta relación laboral
+  id             String @id @default(cuid())
+  contractNumber String @db.VarChar(30) // número interno, único por entidad empleadora
+  sequenceNumber Int    @default(1) // secuencia efectiva del contrato para esta relación laboral
 
-  employee       Employee     @relation(fields: [employeeId], references: [id])
-  employeeId     String
-  position       Position     @relation(fields: [positionId], references: [id])
-  positionId     String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+  position   Position @relation(fields: [positionId], references: [id])
+  positionId String
 
-  legalEntity    LegalEntity  @relation(fields: [legalEntityId], references: [id]) // empleador
-  legalEntityId  String
+  legalEntity   LegalEntity @relation(fields: [legalEntityId], references: [id]) // empleador
+  legalEntityId String
 
   laborRegime    LaborRegime  @relation(fields: [laborRegimeId], references: [id])
   laborRegimeId  String
   contractType   ContractType @relation(fields: [contractTypeId], references: [id])
   contractTypeId String
 
-  startDate      DateTime
-  endDate        DateTime?
-  baseSalary     Decimal      @db.Decimal(12, 2) // sueldo base mensual, CLP
-  weeklyHours    Int          @default(45)
-  isActive       Boolean      @default(true)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  startDate   DateTime
+  endDate     DateTime?
+  baseSalary  Decimal   @db.Decimal(12, 2) // sueldo base mensual, CLP
+  weeklyHours Int       @default(45)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   generatedDocuments GeneratedDocument[]
-  payrollResults PayrollResult[]
+  payrollResults     PayrollResult[]
+  apsContractProfile ApsContractProfile?
 
   @@unique([legalEntityId, contractNumber])
 }
@@ -483,33 +521,33 @@ model Contract {
 // ---------------------------------------------------------------------------
 
 model EventType {
-  id              String   @id @default(cuid())
-  code            String   @unique @db.VarChar(40) // ej. HIRE, PAY_CHANGE, COST_CENTER_CHANGE
-  name            String   @db.VarChar(150)
-  payrollRelevant Boolean  @default(false) // valor por defecto al crear un movimiento de este tipo
-  isActive        Boolean  @default(true)
+  id              String  @id @default(cuid())
+  code            String  @unique @db.VarChar(40) // ej. HIRE, PAY_CHANGE, COST_CENTER_CHANGE
+  name            String  @db.VarChar(150)
+  payrollRelevant Boolean @default(false) // valor por defecto al crear un movimiento de este tipo
+  isActive        Boolean @default(true)
 
-  reasons         EventReason[]
-  employeeEvents  EmployeeEvent[]
+  reasons        EventReason[]
+  employeeEvents EmployeeEvent[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model EventReason {
-  id            String    @id @default(cuid())
-  code          String    @db.VarChar(40)
-  name          String    @db.VarChar(150)
+  id   String @id @default(cuid())
+  code String @db.VarChar(40)
+  name String @db.VarChar(150)
 
-  eventType     EventType @relation(fields: [eventTypeId], references: [id])
-  eventTypeId   String
+  eventType   EventType @relation(fields: [eventTypeId], references: [id])
+  eventTypeId String
 
-  isActive      Boolean   @default(true)
+  isActive Boolean @default(true)
 
   employeeEvents EmployeeEvent[]
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([eventTypeId, code])
 }
@@ -520,39 +558,40 @@ enum EmployeeEventStatus {
 }
 
 model EmployeeEvent {
-  id                String              @id @default(cuid())
+  id String @id @default(cuid())
 
-  employee          Employee            @relation(fields: [employeeId], references: [id])
-  employeeId        String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
 
-  effectiveDate     DateTime
-  sequenceNumber    Int // secuencia del movimiento para este colaborador (1, 2, 3, ...)
+  effectiveDate  DateTime
+  sequenceNumber Int // secuencia del movimiento para este colaborador (1, 2, 3, ...)
 
-  eventType         EventType           @relation(fields: [eventTypeId], references: [id])
-  eventTypeId       String
-  eventReason       EventReason         @relation(fields: [eventReasonId], references: [id])
-  eventReasonId     String
+  eventType     EventType   @relation(fields: [eventTypeId], references: [id])
+  eventTypeId   String
+  eventReason   EventReason @relation(fields: [eventReasonId], references: [id])
+  eventReasonId String
 
-  description       String?             @db.VarChar(500)
-  documentReference String?             @db.VarChar(200)
+  description       String? @db.VarChar(500)
+  documentReference String? @db.VarChar(200)
 
   // Régimen jurídico vigente al momento del movimiento (snapshot del contrato
   // activo del colaborador en ese instante, no necesariamente el que queda
   // vigente después de aplicar el movimiento).
-  laborRegime       LaborRegime?        @relation(fields: [laborRegimeId], references: [id])
-  laborRegimeId     String?
+  laborRegime   LaborRegime? @relation(fields: [laborRegimeId], references: [id])
+  laborRegimeId String?
 
-  payrollRelevant   Boolean // copiado de EventType.payrollRelevant al crear el movimiento
-  retroactive       Boolean // effectiveDate cae en o antes de un período de remuneraciones ya calculado
+  payrollRelevant Boolean // copiado de EventType.payrollRelevant al crear el movimiento
+  retroactive     Boolean // effectiveDate cae en o antes de un período de remuneraciones ya calculado
 
-  status            EmployeeEventStatus @default(APPLIED)
+  status EmployeeEventStatus @default(APPLIED)
 
-  changes           EmployeeEventChange[]
-  bankAccounts      EmployeeBankAccount[]
+  changes      EmployeeEventChange[]
+  bankAccounts EmployeeBankAccount[]
 
-  createdBy         String?             @db.VarChar(150)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  createdBy          String?            @db.VarChar(150)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  apsCareerHistories ApsCareerHistory[]
 
   @@unique([employeeId, sequenceNumber])
 }
@@ -561,16 +600,16 @@ model EmployeeEvent {
 // de un atributo (ej. una promoción que cambia posición y sueldo base a la
 // vez) sin necesitar una fila de historial independiente por cada campo.
 model EmployeeEventChange {
-  id              String        @id @default(cuid())
+  id String @id @default(cuid())
 
   employeeEvent   EmployeeEvent @relation(fields: [employeeEventId], references: [id], onDelete: Cascade)
   employeeEventId String
 
-  fieldCode       String        @db.VarChar(40) // ej. BASE_SALARY, WEEKLY_HOURS, COST_CENTER, POSITION, LABOR_REGIME, OTHER
-  oldValue        String?       @db.VarChar(300)
-  newValue        String?       @db.VarChar(300)
-  oldReferenceId  String?
-  newReferenceId  String?
+  fieldCode      String  @db.VarChar(40) // ej. BASE_SALARY, WEEKLY_HOURS, COST_CENTER, POSITION, LABOR_REGIME, OTHER
+  oldValue       String? @db.VarChar(300)
+  newValue       String? @db.VarChar(300)
+  oldReferenceId String?
+  newReferenceId String?
 }
 
 // ---------------------------------------------------------------------------
@@ -593,17 +632,17 @@ model Bank {
   effectiveFrom DateTime?
   effectiveTo   DateTime?
 
-  bankAccounts  EmployeeBankAccount[]
+  bankAccounts EmployeeBankAccount[]
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model BankAccountType {
-  id       String   @id @default(cuid())
-  code     String   @unique @db.VarChar(30) // ej. CUENTA_CORRIENTE, CUENTA_VISTA, CUENTA_RUT
-  name     String   @db.VarChar(100)
-  isActive Boolean  @default(true)
+  id       String  @id @default(cuid())
+  code     String  @unique @db.VarChar(30) // ej. CUENTA_CORRIENTE, CUENTA_VISTA, CUENTA_RUT
+  name     String  @db.VarChar(100)
+  isActive Boolean @default(true)
 
   bankAccounts EmployeeBankAccount[]
 
@@ -624,37 +663,37 @@ model PaymentMethod {
 }
 
 model EmployeeBankAccount {
-  id                String            @id @default(cuid())
+  id String @id @default(cuid())
 
-  employee          Employee          @relation(fields: [employeeId], references: [id])
-  employeeId        String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
 
-  bank              Bank              @relation(fields: [bankId], references: [id])
-  bankId            String
-  accountType       BankAccountType   @relation(fields: [accountTypeId], references: [id])
-  accountTypeId     String
-  paymentMethod     PaymentMethod     @relation(fields: [paymentMethodId], references: [id])
-  paymentMethodId   String
+  bank            Bank            @relation(fields: [bankId], references: [id])
+  bankId          String
+  accountType     BankAccountType @relation(fields: [accountTypeId], references: [id])
+  accountTypeId   String
+  paymentMethod   PaymentMethod   @relation(fields: [paymentMethodId], references: [id])
+  paymentMethodId String
 
-  accountNumber     String            @db.VarChar(30)
-  accountHolderName String            @db.VarChar(150)
-  accountHolderRut  String            @db.VarChar(12)
-  currencyCode      String            @db.VarChar(3) @default("CLP")
+  accountNumber     String @db.VarChar(30)
+  accountHolderName String @db.VarChar(150)
+  accountHolderRut  String @db.VarChar(12)
+  currencyCode      String @default("CLP") @db.VarChar(3)
 
-  isPrimary         Boolean           @default(true)
-  effectiveFrom     DateTime
-  effectiveTo       DateTime?
-  status            AffiliationStatus @default(ACTIVE)
+  isPrimary     Boolean           @default(true)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        AffiliationStatus @default(ACTIVE)
 
   // Movimiento que originó el cambio, cuando corresponde (ej. registrado
   // desde el módulo de Movimientos con evento BANK_ACCOUNT_CHANGE).
-  employeeEvent     EmployeeEvent?    @relation(fields: [employeeEventId], references: [id])
-  employeeEventId   String?
+  employeeEvent   EmployeeEvent? @relation(fields: [employeeEventId], references: [id])
+  employeeEventId String?
 
-  notes             String?           @db.VarChar(500)
+  notes String? @db.VarChar(500)
 
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ---------------------------------------------------------------------------
@@ -694,15 +733,15 @@ model Leave {
 // ---------------------------------------------------------------------------
 
 model AfpEntity {
-  id            String     @id @default(cuid())
-  name          String     @unique // ej. "Capital", "Cuprum", "Habitat", "Modelo", "PlanVital", "ProVida", "Uno"
-  workerRate    Decimal    @db.Decimal(5, 2) // % total cotización trabajador (10% + comisión), referencial para el catálogo
-  isActive      Boolean    @default(true)
+  id            String    @id @default(cuid())
+  name          String    @unique // ej. "Capital", "Cuprum", "Habitat", "Modelo", "PlanVital", "ProVida", "Uno"
+  workerRate    Decimal   @db.Decimal(5, 2) // % total cotización trabajador (10% + comisión), referencial para el catálogo
+  isActive      Boolean   @default(true)
   effectiveFrom DateTime?
   effectiveTo   DateTime?
 
-  affiliations       EmployeeAfp[]
-  pensionSavings     EmployeePensionSaving[] // también puede ser la institución de un producto voluntario (APV/CAV/etc.)
+  affiliations   EmployeeAfp[]
+  pensionSavings EmployeePensionSaving[] // también puede ser la institución de un producto voluntario (APV/CAV/etc.)
 }
 
 enum HealthInstitutionType {
@@ -740,10 +779,10 @@ model Mutuality {
   effectiveFrom DateTime?
   effectiveTo   DateTime?
 
-  createdBy     String?   @db.VarChar(150)
-  updatedBy     String?   @db.VarChar(150)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Caja de Compensación de Asignación Familiar (CCAF): Los Andes, La Araucana, etc.
@@ -764,10 +803,10 @@ model Ccaf {
   effectiveFrom DateTime?
   effectiveTo   DateTime?
 
-  createdBy     String?   @db.VarChar(150)
-  updatedBy     String?   @db.VarChar(150)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum AffiliationStatus {
@@ -781,8 +820,8 @@ enum AffiliationStatus {
 // crea uno nuevo, para poder recalcular liquidaciones históricas con los datos correctos
 // del período (AFP, comisión, fondo, etc. vigentes en ese momento).
 model EmployeeAfp {
-  id         String   @id @default(cuid())
-  employee   Employee @relation(fields: [employeeId], references: [id])
+  id         String    @id @default(cuid())
+  employee   Employee  @relation(fields: [employeeId], references: [id])
   employeeId String
   afp        AfpEntity @relation(fields: [afpId], references: [id])
   afpId      String
@@ -792,25 +831,25 @@ model EmployeeAfp {
   effectiveFrom   DateTime // desde cuándo se usa esta AFP para el cálculo de remuneraciones
   effectiveTo     DateTime? // null mientras esté vigente
 
-  status     AffiliationStatus @default(ACTIVE)
-  fundType   String?  @db.Char(1) // tipo_fondo: A/B/C/D/E
+  status   AffiliationStatus @default(ACTIVE)
+  fundType String?           @db.Char(1) // tipo_fondo: A/B/C/D/E
 
-  mandatoryContributionPct  Decimal  @db.Decimal(6, 3) @default(10.000) // cotización obligatoria, ley
+  mandatoryContributionPct  Decimal  @default(10.000) @db.Decimal(6, 3) // cotización obligatoria, ley
   afpCommissionPct          Decimal? @db.Decimal(6, 3) // comisión de la AFP vigente al momento de esta afiliación
   additionalContributionPct Decimal? @db.Decimal(6, 3) // cotización adicional, si corresponde
 
   heavyWork    Boolean  @default(false) // trabajo pesado
   heavyWorkPct Decimal? @db.Decimal(5, 2) // 2.00 / 4.00
 
-  notes      String?  @db.VarChar(500)
+  notes String? @db.VarChar(500)
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum PensionProductType {
-  APV                   // Ahorro Previsional Voluntario
-  CAV                   // Cuenta de Ahorro Voluntario (Cuenta 2)
+  APV // Ahorro Previsional Voluntario
+  CAV // Cuenta de Ahorro Voluntario (Cuenta 2)
   COTIZACION_VOLUNTARIA
   DEPOSITO_CONVENIDO
 }
@@ -830,29 +869,29 @@ enum PensionSavingStatus {
 // Un trabajador puede tener más de uno simultáneamente (ej. APV + Cuenta 2), incluso en
 // una institución distinta de su AFP de afiliación obligatoria.
 model EmployeePensionSaving {
-  id             String   @id @default(cuid())
-  employee       Employee @relation(fields: [employeeId], references: [id])
-  employeeId     String
-  productType    PensionProductType
-  institution    AfpEntity @relation(fields: [institutionId], references: [id])
-  institutionId  String
+  id            String             @id @default(cuid())
+  employee      Employee           @relation(fields: [employeeId], references: [id])
+  employeeId    String
+  productType   PensionProductType
+  institution   AfpEntity          @relation(fields: [institutionId], references: [id])
+  institutionId String
 
-  taxRegime        String?  @db.Char(1) // A/B, solo aplica a APV
+  taxRegime        String?          @db.Char(1) // A/B, solo aplica a APV
   contributionMode ContributionMode
-  amount           Decimal? @db.Decimal(15, 2) // si contributionMode = MONTO
-  percentage       Decimal? @db.Decimal(7, 4) // si contributionMode = PORCENTAJE
-  currency         String?  @db.VarChar(10) @default("CLP")
-  fundType         String?  @db.Char(1)
+  amount           Decimal?         @db.Decimal(15, 2) // si contributionMode = MONTO
+  percentage       Decimal?         @db.Decimal(7, 4) // si contributionMode = PORCENTAJE
+  currency         String?          @default("CLP") @db.VarChar(10)
+  fundType         String?          @db.Char(1)
 
   effectiveFrom    DateTime
   effectiveTo      DateTime?
   status           PensionSavingStatus @default(ACTIVE)
-  payrollDeduction Boolean  @default(true) // descuento por planilla
-  contractNumber   String?  @db.VarChar(50)
-  notes            String?  @db.VarChar(500)
+  payrollDeduction Boolean             @default(true) // descuento por planilla
+  contractNumber   String?             @db.VarChar(50)
+  notes            String?             @db.VarChar(500)
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Afiliación de salud (Fonasa/Isapre) del trabajador, también con vigencia histórica:
@@ -864,11 +903,11 @@ model HealthAffiliation {
   healthInstitution   HealthInstitution @relation(fields: [healthInstitutionId], references: [id])
   healthInstitutionId String
 
-  planUfValue   Decimal? @db.Decimal(10, 4) // valor del plan en UF, si es Isapre
+  planUfValue   Decimal?          @db.Decimal(10, 4) // valor del plan en UF, si es Isapre
   effectiveFrom DateTime
   effectiveTo   DateTime?
   status        AffiliationStatus @default(ACTIVE)
-  notes         String?  @db.VarChar(500)
+  notes         String?           @db.VarChar(500)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -876,12 +915,12 @@ model HealthAffiliation {
 
 // Tabla de impuesto único de segunda categoría (tramos en UTM)
 model TaxBracket {
-  id          String   @id @default(cuid())
-  validFrom   DateTime // vigencia del tramo, para permitir historicidad de la tabla del SII
-  fromUtm     Decimal  @db.Decimal(10, 4)
-  toUtm       Decimal? @db.Decimal(10, 4) // null = sin tope (tramo superior)
-  factor      Decimal  @db.Decimal(6, 4) // factor de cálculo
-  deductionUtm Decimal @db.Decimal(10, 4) // cantidad a rebajar, en UTM
+  id           String   @id @default(cuid())
+  validFrom    DateTime // vigencia del tramo, para permitir historicidad de la tabla del SII
+  fromUtm      Decimal  @db.Decimal(10, 4)
+  toUtm        Decimal? @db.Decimal(10, 4) // null = sin tope (tramo superior)
+  factor       Decimal  @db.Decimal(6, 4) // factor de cálculo
+  deductionUtm Decimal  @db.Decimal(10, 4) // cantidad a rebajar, en UTM
 }
 
 // Indicadores económicos mensuales requeridos para el cálculo de remuneraciones
@@ -934,14 +973,14 @@ enum ConceptCategory {
 }
 
 model PayrollConcept {
-  id        String          @id @default(cuid())
-  code      String          @unique // ej. "SUELDO_BASE", "GRATIFICACION", "AFP", "SALUD", "AFC", "IMPUESTO_UNICO"
-  name      String
-  type      ConceptType
-  category  ConceptCategory
-  isSystem  Boolean         @default(false) // conceptos calculados automáticamente por el sistema
-  details   PayrollResultDetail[]
-  formulas  PayrollFormula[]
+  id       String                @id @default(cuid())
+  code     String                @unique // ej. "SUELDO_BASE", "GRATIFICACION", "AFP", "SALUD", "AFC", "IMPUESTO_UNICO"
+  name     String
+  type     ConceptType
+  category ConceptCategory
+  isSystem Boolean               @default(false) // conceptos calculados automáticamente por el sistema
+  details  PayrollResultDetail[]
+  formulas PayrollFormula[]
 }
 
 // ---------------------------------------------------------------------------
@@ -970,24 +1009,24 @@ enum PayrollRunStatus {
 }
 
 model PayrollRun {
-  id                String            @id @default(cuid())
-  payrollPeriod     PayrollPeriod     @relation(fields: [payrollPeriodId], references: [id])
-  payrollPeriodId   String
-  runNumber         Int
-  runType           PayrollRunType
-  correctionNumber  Int?
-  description       String?           @db.VarChar(255)
-  calculationDate   DateTime?
-  status            PayrollRunStatus  @default(RUNNING)
+  id               String           @id @default(cuid())
+  payrollPeriod    PayrollPeriod    @relation(fields: [payrollPeriodId], references: [id])
+  payrollPeriodId  String
+  runNumber        Int
+  runType          PayrollRunType
+  correctionNumber Int?
+  description      String?          @db.VarChar(255)
+  calculationDate  DateTime?
+  status           PayrollRunStatus @default(RUNNING)
 
-  parent            PayrollRun?       @relation("RunToParent", fields: [parentRunId], references: [id])
-  parentRunId       String?
-  children          PayrollRun[]      @relation("RunToParent")
+  parent      PayrollRun?  @relation("RunToParent", fields: [parentRunId], references: [id])
+  parentRunId String?
+  children    PayrollRun[] @relation("RunToParent")
 
-  results           PayrollResult[]
+  results PayrollResult[]
 
-  createdBy         String?           @db.VarChar(150)
-  createdAt         DateTime          @default(now())
+  createdBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
 
   @@unique([payrollPeriodId, runNumber])
 }
@@ -1008,53 +1047,53 @@ enum PayrollCalculationMode {
 }
 
 model PayrollResult {
-  id                      String                 @id @default(cuid())
+  id String @id @default(cuid())
 
-  payrollRun              PayrollRun             @relation(fields: [payrollRunId], references: [id])
-  payrollRunId            String
-  payrollPeriod           PayrollPeriod          @relation(fields: [payrollPeriodId], references: [id])
-  payrollPeriodId         String
-  employee                Employee               @relation(fields: [employeeId], references: [id])
-  employeeId              String
-  contract                Contract               @relation(fields: [contractId], references: [id])
-  contractId              String
+  payrollRun      PayrollRun    @relation(fields: [payrollRunId], references: [id])
+  payrollRunId    String
+  payrollPeriod   PayrollPeriod @relation(fields: [payrollPeriodId], references: [id])
+  payrollPeriodId String
+  employee        Employee      @relation(fields: [employeeId], references: [id])
+  employeeId      String
+  contract        Contract      @relation(fields: [contractId], references: [id])
+  contractId      String
 
-  resultSequence          Int // 1, 2, 3... por colaborador+período; nunca se reutiliza ni se sobrescribe
-  resultType              PayrollRunType
+  resultSequence Int // 1, 2, 3... por colaborador+período; nunca se reutiliza ni se sobrescribe
+  resultType     PayrollRunType
 
-  parent                  PayrollResult?         @relation("ResultToParent", fields: [parentResultId], references: [id])
-  parentResultId          String?
-  children                PayrollResult[]        @relation("ResultToParent")
+  parent         PayrollResult?  @relation("ResultToParent", fields: [parentResultId], references: [id])
+  parentResultId String?
+  children       PayrollResult[] @relation("ResultToParent")
 
-  effectiveDate           DateTime?
-  calculationDate         DateTime
-  calculationMode         PayrollCalculationMode @default(FULL)
-  currencyCode            String                 @default("CLP") @db.VarChar(3)
+  effectiveDate   DateTime?
+  calculationDate DateTime
+  calculationMode PayrollCalculationMode @default(FULL)
+  currencyCode    String                 @default("CLP") @db.VarChar(3)
 
-  totalEarnings           Decimal                @db.Decimal(18, 2) @default(0)
-  taxableEarnings         Decimal                @db.Decimal(18, 2) @default(0)
-  nonTaxableEarnings      Decimal                @db.Decimal(18, 2) @default(0)
+  totalEarnings      Decimal @default(0) @db.Decimal(18, 2)
+  taxableEarnings    Decimal @default(0) @db.Decimal(18, 2)
+  nonTaxableEarnings Decimal @default(0) @db.Decimal(18, 2)
 
-  totalDeductions         Decimal                @db.Decimal(18, 2) @default(0)
-  totalLegalDeductions    Decimal                @db.Decimal(18, 2) @default(0)
-  totalOtherDeductions    Decimal                @db.Decimal(18, 2) @default(0)
+  totalDeductions      Decimal @default(0) @db.Decimal(18, 2)
+  totalLegalDeductions Decimal @default(0) @db.Decimal(18, 2)
+  totalOtherDeductions Decimal @default(0) @db.Decimal(18, 2)
 
-  totalTaxable            Decimal                @db.Decimal(18, 2) @default(0) // base impuesto único
-  totalPensionable        Decimal                @db.Decimal(18, 2) @default(0) // base tope AFP
-  totalHealthBase         Decimal                @db.Decimal(18, 2) @default(0) // base tope salud
+  totalTaxable     Decimal @default(0) @db.Decimal(18, 2) // base impuesto único
+  totalPensionable Decimal @default(0) @db.Decimal(18, 2) // base tope AFP
+  totalHealthBase  Decimal @default(0) @db.Decimal(18, 2) // base tope salud
 
-  netAmount               Decimal                @db.Decimal(18, 2) @default(0)
-  previousNetAmount       Decimal?               @db.Decimal(18, 2) // líquido del resultado anterior, si es una corrección
-  differenceAmount        Decimal?               @db.Decimal(18, 2) // netAmount - previousNetAmount
+  netAmount         Decimal  @default(0) @db.Decimal(18, 2)
+  previousNetAmount Decimal? @db.Decimal(18, 2) // líquido del resultado anterior, si es una corrección
+  differenceAmount  Decimal? @db.Decimal(18, 2) // netAmount - previousNetAmount
 
-  status                  PayrollResultStatus    @default(CALCULATED)
-  isCurrent               Boolean                @default(true) // sólo un resultado por colaborador+período puede ser el vigente
+  status    PayrollResultStatus @default(CALCULATED)
+  isCurrent Boolean             @default(true) // sólo un resultado por colaborador+período puede ser el vigente
 
-  details                 PayrollResultDetail[]
-  employment              PayrollResultEmployment?
+  details    PayrollResultDetail[]
+  employment PayrollResultEmployment?
 
-  createdBy               String?                @db.VarChar(150)
-  createdAt               DateTime               @default(now())
+  createdBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
 
   @@unique([employeeId, payrollPeriodId, resultSequence])
 }
@@ -1082,33 +1121,33 @@ enum PayrollDetailOrigin {
 // del FK para que el detalle histórico no cambie si el concepto se
 // renombra después.
 model PayrollResultDetail {
-  id                    String               @id @default(cuid())
-  payrollResult         PayrollResult        @relation(fields: [payrollResultId], references: [id], onDelete: Cascade)
-  payrollResultId       String
+  id              String        @id @default(cuid())
+  payrollResult   PayrollResult @relation(fields: [payrollResultId], references: [id], onDelete: Cascade)
+  payrollResultId String
 
-  concept               PayrollConcept       @relation(fields: [conceptId], references: [id])
-  conceptId             String
-  conceptCode           String               @db.VarChar(30)
-  conceptName           String               @db.VarChar(200)
-  conceptType           ConceptType
+  concept     PayrollConcept @relation(fields: [conceptId], references: [id])
+  conceptId   String
+  conceptCode String         @db.VarChar(30)
+  conceptName String         @db.VarChar(200)
+  conceptType ConceptType
 
-  sequence              Int?
-  quantity              Decimal?             @db.Decimal(18, 6)
-  rate                  Decimal?             @db.Decimal(18, 6)
-  baseAmount            Decimal?             @db.Decimal(18, 2)
-  amount                Decimal              @db.Decimal(18, 2)
+  sequence   Int?
+  quantity   Decimal? @db.Decimal(18, 6)
+  rate       Decimal? @db.Decimal(18, 6)
+  baseAmount Decimal? @db.Decimal(18, 2)
+  amount     Decimal  @db.Decimal(18, 2)
 
-  taxable               Boolean              @default(false)
-  pensionable           Boolean              @default(false)
-  healthTaxable         Boolean              @default(false)
-  unemploymentTaxable   Boolean              @default(false)
-  incomeTaxable         Boolean              @default(false)
-  employerCost          Boolean              @default(false)
+  taxable             Boolean @default(false)
+  pensionable         Boolean @default(false)
+  healthTaxable       Boolean @default(false)
+  unemploymentTaxable Boolean @default(false)
+  incomeTaxable       Boolean @default(false)
+  employerCost        Boolean @default(false)
 
-  origin                PayrollDetailOrigin?
-  sourceRecordId        String?
+  origin         PayrollDetailOrigin?
+  sourceRecordId String?
 
-  createdAt             DateTime             @default(now())
+  createdAt DateTime @default(now())
 }
 
 // Fotografía contractual/organizacional usada para este cálculo específico
@@ -1119,28 +1158,28 @@ model PayrollResultDetail {
 // borrado futuro de un centro de costo/cargo antiguo, y para no depender de
 // un join para mostrar la liquidación.
 model PayrollResultEmployment {
-  id                String        @id @default(cuid())
-  payrollResult     PayrollResult @relation(fields: [payrollResultId], references: [id], onDelete: Cascade)
-  payrollResultId   String        @unique
+  id              String        @id @default(cuid())
+  payrollResult   PayrollResult @relation(fields: [payrollResultId], references: [id], onDelete: Cascade)
+  payrollResultId String        @unique
 
-  legalEntityId     String?
-  legalEntityName   String?       @db.VarChar(150)
-  costCenterId      String?
-  costCenterName    String?       @db.VarChar(150)
-  departmentId      String?
-  departmentName    String?       @db.VarChar(150)
-  positionId        String?
-  positionTitle     String?       @db.VarChar(200)
-  contractTypeId    String?
-  contractTypeName  String?       @db.VarChar(100)
+  legalEntityId    String?
+  legalEntityName  String? @db.VarChar(150)
+  costCenterId     String?
+  costCenterName   String? @db.VarChar(150)
+  departmentId     String?
+  departmentName   String? @db.VarChar(150)
+  positionId       String?
+  positionTitle    String? @db.VarChar(200)
+  contractTypeId   String?
+  contractTypeName String? @db.VarChar(100)
 
-  weeklyHours       Decimal?      @db.Decimal(8, 2)
-  baseSalary        Decimal?      @db.Decimal(18, 2)
+  weeklyHours Decimal? @db.Decimal(8, 2)
+  baseSalary  Decimal? @db.Decimal(18, 2)
 
-  validFrom         DateTime?
-  validTo           DateTime? // hoy siempre = fin del período; sin soporte de tramos intra-mes todavía
+  validFrom DateTime?
+  validTo   DateTime? // hoy siempre = fin del período; sin soporte de tramos intra-mes todavía
 
-  createdAt         DateTime      @default(now())
+  createdAt DateTime @default(now())
 }
 
 // ---------------------------------------------------------------------------
@@ -1183,28 +1222,28 @@ enum PayrollVariableSource {
 // de guardado que la fórmula sólo use variables existentes en este catálogo;
 // eso lo hace el simulador al ejecutar la fórmula contra variables reales.
 model PayrollVariable {
-  id          String                 @id @default(cuid())
-  code        String                 @unique @db.VarChar(50)
-  name        String                 @db.VarChar(150)
-  description String?                @db.VarChar(300)
+  id          String                @id @default(cuid())
+  code        String                @unique @db.VarChar(50)
+  name        String                @db.VarChar(150)
+  description String?               @db.VarChar(300)
   source      PayrollVariableSource
-  isActive    Boolean                @default(true)
+  isActive    Boolean               @default(true)
 
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PayrollParameter {
-  id          String                    @id @default(cuid())
-  code        String                    @unique @db.VarChar(50)
-  name        String                    @db.VarChar(150)
-  description String?                   @db.VarChar(300)
-  isActive    Boolean                   @default(true)
+  id          String  @id @default(cuid())
+  code        String  @unique @db.VarChar(50)
+  name        String  @db.VarChar(150)
+  description String? @db.VarChar(300)
+  isActive    Boolean @default(true)
 
-  values      PayrollParameterValue[]
+  values PayrollParameterValue[]
 
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Valor de un parámetro con vigencia histórica (ej. PORC_RESPONSABILIDAD
@@ -1218,19 +1257,19 @@ model PayrollParameterValue {
   effectiveFrom DateTime
   effectiveTo   DateTime?
 
-  createdAt     DateTime         @default(now())
+  createdAt DateTime @default(now())
 }
 
 model PayrollTable {
-  id       String            @id @default(cuid())
-  code     String            @unique @db.VarChar(50)
-  name     String            @db.VarChar(150)
-  isActive Boolean           @default(true)
+  id       String  @id @default(cuid())
+  code     String  @unique @db.VarChar(50)
+  name     String  @db.VarChar(150)
+  isActive Boolean @default(true)
 
-  rows     PayrollTableRow[]
+  rows PayrollTableRow[]
 
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Fila de tramo (ej. tabla de impuesto/tramos de asignación): LOOKUP(TABLA,
@@ -1250,31 +1289,31 @@ model PayrollTableRow {
 // La fórmula versionada asociada a un PayrollConcept. Nunca se edita una vez
 // fuera de DRAFT: se crea una nueva versión (conceptId, version+1).
 model PayrollFormula {
-  id                String               @id @default(cuid())
+  id String @id @default(cuid())
 
-  concept           PayrollConcept       @relation(fields: [conceptId], references: [id])
-  conceptId         String
-  version           Int
+  concept   PayrollConcept @relation(fields: [conceptId], references: [id])
+  conceptId String
+  version   Int
 
-  formulaExpression String               @db.VarChar(2000) // DSL, ej. "SUELDO_BASE * PORC_RESPONSABILIDAD"
-  condition         String?              @db.VarChar(1000) // DSL booleana opcional, ej. "CATEGORIA_APS = 1"
+  formulaExpression String  @db.VarChar(2000) // DSL, ej. "SUELDO_BASE * PORC_RESPONSABILIDAD"
+  condition         String? @db.VarChar(1000) // DSL booleana opcional, ej. "CATEGORIA_APS = 1"
 
   // Alcance opcional: nulo = aplica a todos los régimenes/entidades.
-  laborRegime       LaborRegime?         @relation(fields: [laborRegimeId], references: [id])
-  laborRegimeId     String?
-  legalEntity       LegalEntity?         @relation(fields: [legalEntityId], references: [id])
-  legalEntityId     String?
+  laborRegime   LaborRegime? @relation(fields: [laborRegimeId], references: [id])
+  laborRegimeId String?
+  legalEntity   LegalEntity? @relation(fields: [legalEntityId], references: [id])
+  legalEntityId String?
 
-  priority          Int                  @default(500) // orden de cálculo (menor = antes)
-  effectiveFrom     DateTime
-  effectiveTo       DateTime?
-  status            PayrollFormulaStatus @default(DRAFT)
+  priority      Int                  @default(500) // orden de cálculo (menor = antes)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        PayrollFormulaStatus @default(DRAFT)
 
-  createdBy         String?              @db.VarChar(150)
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  approvedBy        String?              @db.VarChar(150)
-  approvedAt        DateTime?
+  createdBy  String?   @db.VarChar(150)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  approvedBy String?   @db.VarChar(150)
+  approvedAt DateTime?
 
   @@unique([conceptId, version])
 }
@@ -1309,13 +1348,13 @@ enum ContractMatrixStatus {
 // pero sin el ciclo de aprobación completo porque el riesgo real está en el
 // contenido de la plantilla/cláusulas, no en esta regla de enrutamiento).
 model ContractMatrix {
-  id           String  @id @default(cuid())
-  code         String  @db.VarChar(80)
-  name         String  @db.VarChar(200)
-  documentType String  @db.VarChar(30) // CONTRATO | ANEXO | CERTIFICADO (validado en el DTO)
+  id           String @id @default(cuid())
+  code         String @db.VarChar(80)
+  name         String @db.VarChar(200)
+  documentType String @db.VarChar(30) // CONTRATO | ANEXO | CERTIFICADO (validado en el DTO)
 
-  legalRegime   LaborRegime?  @relation(fields: [legalRegimeId], references: [id])
-  legalRegimeId String?
+  legalRegime    LaborRegime?  @relation(fields: [legalRegimeId], references: [id])
+  legalRegimeId  String?
   contractType   ContractType? @relation(fields: [contractTypeId], references: [id])
   contractTypeId String?
 
@@ -1351,10 +1390,10 @@ enum TemplateVersionStatus {
 }
 
 model ContractTemplate {
-  id           String  @id @default(cuid())
-  code         String  @unique @db.VarChar(80)
-  name         String  @db.VarChar(200)
-  documentType String  @db.VarChar(30)
+  id           String        @id @default(cuid())
+  code         String        @unique @db.VarChar(80)
+  name         String        @db.VarChar(200)
+  documentType String        @db.VarChar(30)
   status       OrgUnitStatus @default(ACTIVE)
 
   versions ContractTemplateVersion[]
@@ -1369,16 +1408,16 @@ model ContractTemplate {
 // pipes de formato, bloques {{#if}}) y el placeholder {{clauses}} que expande
 // las cláusulas de la matriz. Nunca se edita fuera de DRAFT.
 model ContractTemplateVersion {
-  id            String                 @id @default(cuid())
-  template      ContractTemplate       @relation(fields: [templateId], references: [id])
+  id            String                @id @default(cuid())
+  template      ContractTemplate      @relation(fields: [templateId], references: [id])
   templateId    String
   versionNumber Int
-  content       String                 @db.Text
-  status        TemplateVersionStatus  @default(DRAFT)
+  content       String                @db.Text
+  status        TemplateVersionStatus @default(DRAFT)
   validFrom     DateTime?
   validTo       DateTime?
   publishedAt   DateTime?
-  publishedBy   String?                @db.VarChar(150)
+  publishedBy   String?               @db.VarChar(150)
 
   generatedDocuments GeneratedDocument[]
 
@@ -1415,16 +1454,16 @@ model Clause {
 // Contenido versionado de una cláusula (HTML con tokens y {{#if}}). Nunca se
 // edita fuera de DRAFT; igual regla de vigencia que ContractTemplateVersion.
 model ClauseVersion {
-  id            String               @id @default(cuid())
-  clause        Clause               @relation(fields: [clauseId], references: [id])
+  id            String              @id @default(cuid())
+  clause        Clause              @relation(fields: [clauseId], references: [id])
   clauseId      String
   versionNumber Int
-  content       String               @db.Text
-  status        ClauseVersionStatus  @default(DRAFT)
+  content       String              @db.Text
+  status        ClauseVersionStatus @default(DRAFT)
   validFrom     DateTime?
   validTo       DateTime?
   publishedAt   DateTime?
-  publishedBy   String?              @db.VarChar(150)
+  publishedBy   String?             @db.VarChar(150)
 
   createdBy String?  @db.VarChar(150)
   createdAt DateTime @default(now())
@@ -1435,13 +1474,13 @@ model ClauseVersion {
 // Asigna una cláusula a una matriz, en el orden en que debe aparecer dentro
 // del placeholder {{clauses}} de la plantilla.
 model MatrixClause {
-  id        String  @id @default(cuid())
+  id        String         @id @default(cuid())
   matrix    ContractMatrix @relation(fields: [matrixId], references: [id], onDelete: Cascade)
   matrixId  String
   clause    Clause         @relation(fields: [clauseId], references: [id])
   clauseId  String
   sequence  Int
-  mandatory Boolean @default(true)
+  mandatory Boolean        @default(true)
 
   @@unique([matrixId, clauseId])
 }
@@ -1479,8 +1518,8 @@ enum GeneratedDocumentStatus {
 // o dirección después, este documento conserva los valores vigentes al
 // momento en que se generó (ver GeneratedDocumentToken).
 model GeneratedDocument {
-  id             String  @id @default(cuid())
-  documentNumber String  @unique @db.VarChar(40) // ej. "CTR-2026-000123"
+  id             String @id @default(cuid())
+  documentNumber String @unique @db.VarChar(40) // ej. "CTR-2026-000123"
 
   matrix             ContractMatrix          @relation(fields: [matrixId], references: [id])
   matrixId           String
@@ -1505,9 +1544,9 @@ model GeneratedDocument {
   content     String @db.Text // HTML final, ya renderizado y congelado
   contentHash String @db.VarChar(64) // sha256 hex del contenido
 
-  cancelledAt   DateTime?
-  cancelledBy   String?   @db.VarChar(150)
-  cancelReason  String?   @db.VarChar(300)
+  cancelledAt  DateTime?
+  cancelledBy  String?   @db.VarChar(150)
+  cancelReason String?   @db.VarChar(300)
 
   tokens GeneratedDocumentToken[]
 }
@@ -1524,4 +1563,1127 @@ model GeneratedDocumentToken {
   formattedValue String?           @db.VarChar(500)
   sourceEntity   String?           @db.VarChar(50)
   sourceRecordId String?
+}
+
+// ---------------------------------------------------------------------------
+// Carrera Funcionaria APS — Ley N°19.378 (Estatuto de Atención Primaria de
+// Salud Municipal) y su Reglamento de Carrera Funcionaria (Decreto 1.889).
+//
+// Ver docs/ley-19378-modelo-fisico.md para la especificación completa y las
+// decisiones de integración (qué se reutiliza de LegalEntity/LaborRegime/
+// Contract/PayrollConcept/PayrollFormula en vez de duplicarlo).
+//
+// Convención: Nómina no interpreta esta ley — este submódulo calcula la
+// carrera funcionaria y deja su resultado en ApsContractProfile; de ahí en
+// adelante Nómina lo consume igual que cualquier otro régimen, vía
+// PayrollConcept/PayrollFormula ya existentes filtrados por
+// laborRegimeId = LEY_19378.
+// ---------------------------------------------------------------------------
+
+enum ApsAdministrativeEntityType {
+  MUNICIPALITY
+  MUNICIPAL_CORPORATION
+  NON_PROFIT_ADMINISTRATOR
+  OTHER_LEGAL_ENTITY
+}
+
+enum ApsUrbanRural {
+  URBAN
+  RURAL
+}
+
+enum ApsBienniumStatus {
+  IN_PROGRESS
+  COMPLETED
+  RECOGNIZED
+  SUSPENDED
+  ANNULLED
+}
+
+enum ApsServiceExclusionType {
+  UNPAID_LEAVE
+  UNRECOGNIZED_SERVICE
+  SERVICE_INTERRUPTION
+  OTHER
+}
+
+enum ApsAcademicStatus {
+  IN_PROGRESS
+  COMPLETED
+  RECOGNIZED
+  REJECTED
+}
+
+enum ApsTrainingParticipationStatus {
+  REGISTERED
+  IN_PROGRESS
+  APPROVED
+  FAILED
+  RECOGNIZED
+  REJECTED
+}
+
+enum ApsCareerEventType {
+  CAREER_ENTRY
+  CATEGORY_CHANGE
+  BIENNIUM_RECOGNITION
+  TRAINING_RECOGNITION
+  LEVEL_CHANGE
+  TITLE_RECOGNITION
+  POSTGRADUATE_RECOGNITION
+  MERIT_EVALUATION
+  MERIT_ASSIGNMENT
+  POSITION_CHANGE
+  RESPONSIBILITY_ASSIGNMENT
+  CAREER_RECALCULATION
+  RECTIFICATION
+}
+
+enum ApsProgramStatus {
+  DRAFT
+  APPROVED
+  IN_EXECUTION
+  CLOSED
+}
+
+// ---- Dominio 1: configuración y parámetros legales -------------------------
+
+// Genérico a propósito: no es "de la Ley 19.378", es del sistema, para que
+// otros regímenes (Ley 19.070, Ley 19.464) lo reutilicen sin tabla nueva.
+model LegalParameter {
+  id            String       @id @default(cuid())
+  laborRegime   LaborRegime? @relation(fields: [laborRegimeId], references: [id])
+  laborRegimeId String?
+
+  parameterCode String   @db.VarChar(80) // ej. LAW_19378.MAX_BIENNIUMS
+  parameterName String   @db.VarChar(200)
+  numericValue  Decimal? @db.Decimal(18, 6)
+  textValue     String?  @db.VarChar(300)
+  booleanValue  Boolean?
+  category      String?  @db.VarChar(60)
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  legalReference String? @db.VarChar(200)
+  articleNumber  String? @db.VarChar(20)
+  version        Int
+  isActive       Boolean @default(true)
+
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---- Dominio 2: entidad administradora y establecimientos ------------------
+
+// Extiende LegalEntity (ya existente) con la calificación de "administradora
+// de salud municipal" en vez de duplicar razón social/RUT/representante.
+model ApsAdministrativeEntityProfile {
+  id                    String                      @id @default(cuid())
+  legalEntity           LegalEntity                 @relation(fields: [legalEntityId], references: [id])
+  legalEntityId         String                      @unique
+  entityType            ApsAdministrativeEntityType
+  municipalityCommune   Commune?                    @relation(fields: [municipalityCommuneId], references: [id])
+  municipalityCommuneId String?
+  healthService         ApsHealthService?           @relation(fields: [healthServiceId], references: [id])
+  healthServiceId       String?
+  region                Region?                     @relation(fields: [regionId], references: [id])
+  regionId              String?
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  active        Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsHealthService {
+  id       String  @id @default(cuid())
+  code     String  @unique @db.VarChar(20)
+  name     String  @db.VarChar(150)
+  region   Region? @relation(fields: [regionId], references: [id])
+  regionId String?
+  isActive Boolean @default(true)
+
+  administrativeEntityProfiles ApsAdministrativeEntityProfile[]
+  healthFacilities             ApsHealthFacility[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsFacilityType {
+  id       String  @id @default(cuid())
+  code     String  @unique @db.VarChar(30) // CESFAM, CECOSF, POSTA_RURAL, SAPU, SAR, COSAM, CONSULTORIO, DIRECCION_SALUD, OTRO
+  name     String  @db.VarChar(150)
+  isActive Boolean @default(true)
+
+  facilities ApsHealthFacility[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsHealthFacility {
+  id                     String            @id @default(cuid())
+  administrativeEntity   LegalEntity       @relation(fields: [administrativeEntityId], references: [id])
+  administrativeEntityId String
+  code                   String            @unique @db.VarChar(30)
+  name                   String            @db.VarChar(200)
+  facilityType           ApsFacilityType   @relation(fields: [facilityTypeId], references: [id])
+  facilityTypeId         String
+  urbanRural             ApsUrbanRural
+  address                String?           @db.VarChar(300)
+  commune                Commune           @relation(fields: [communeId], references: [id])
+  communeId              String
+  healthService          ApsHealthService? @relation(fields: [healthServiceId], references: [id])
+  healthServiceId        String?
+  division               Division?         @relation(fields: [divisionId], references: [id])
+  divisionId             String?
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  active        Boolean   @default(true)
+
+  staffingPositions         ApsStaffingPosition[]
+  employeeAssignments       ApsEmployeeAssignment[]
+  responsibilityAssignments ApsResponsibilityAssignment[]
+  difficultPerformances     ApsDifficultPerformanceFacility[]
+  zoneAssignments           EmployeeApsZoneAssignment[]
+  contractProfiles          ApsContractProfile[]
+
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---- Dominio 3: categorías, profesiones y carrera ---------------------------
+
+// Las 6 categorías (A-F) son datos, no un enum: nunca se codifican en el
+// algoritmo, así una entidad administradora puede ajustarlas sin migración.
+model ApsEmployeeCategory {
+  id                   String    @id @default(cuid())
+  code                 String    @unique @db.VarChar(5) // "A".."F"
+  name                 String    @db.VarChar(200)
+  description          String?   @db.VarChar(500)
+  qualificationLevel   String?   @db.VarChar(50)
+  professionalRequired Boolean   @default(false)
+  minimumSemesters     Int?
+  effectiveFrom        DateTime
+  effectiveTo          DateTime?
+  active               Boolean   @default(true)
+
+  professions                 ApsProfession[]
+  careerLevels                ApsCareerLevel[]
+  baseSalaryScales            ApsBaseSalaryScale[]
+  nationalMinimumSalaries     ApsNationalMinimumBaseSalary[]
+  experienceRules             ApsExperienceRule[]
+  careers                     ApsCareer[]
+  careerHistory               ApsCareerHistory[]
+  staffingPositions           ApsStaffingPosition[]
+  employeeAssignments         ApsEmployeeAssignment[]
+  specialTemporaryAssignments ApsSpecialTemporaryAssignment[]
+  trainingProgramItems        ApsMunicipalTrainingProgramItem[]
+  contractProfiles            ApsContractProfile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsProfession {
+  id                        String              @id @default(cuid())
+  code                      String              @unique @db.VarChar(40)
+  name                      String              @db.VarChar(150)
+  category                  ApsEmployeeCategory @relation(fields: [categoryId], references: [id])
+  categoryId                String
+  professionalTitleRequired Boolean             @default(false)
+  minimumSemesters          Int?
+  healthRegistryRequired    Boolean             @default(false)
+  effectiveFrom             DateTime
+  effectiveTo               DateTime?
+  active                    Boolean             @default(true)
+
+  postgraduates ApsPostgraduate[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Nivel y su puntaje asociado. El sueldo se retira de aquí y vive en
+// ApsBaseSalaryScale (separar puntaje de nivel de su valor monetario
+// histórico).
+model ApsCareerLevel {
+  id                     String              @id @default(cuid())
+  administrativeEntity   LegalEntity         @relation(fields: [administrativeEntityId], references: [id])
+  administrativeEntityId String
+  category               ApsEmployeeCategory @relation(fields: [categoryId], references: [id])
+  categoryId             String
+  levelNumber            Int // 1 a 15 (la carrera parte en 15 y sube hacia 1)
+  minimumPoints          Decimal             @db.Decimal(10, 4)
+  maximumPoints          Decimal?            @db.Decimal(10, 4) // nulo = sin techo (nivel 1)
+  trainingPercentage     Decimal?            @db.Decimal(14, 6)
+  experiencePercentage   Decimal?            @db.Decimal(14, 6)
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  active        Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsBaseSalaryScale {
+  id                     String              @id @default(cuid())
+  administrativeEntity   LegalEntity         @relation(fields: [administrativeEntityId], references: [id])
+  administrativeEntityId String
+  category               ApsEmployeeCategory @relation(fields: [categoryId], references: [id])
+  categoryId             String
+  careerLevel            Int
+  weeklyHours            Int
+  amount                 Decimal             @db.Decimal(12, 2)
+
+  effectiveFrom     DateTime
+  effectiveTo       DateTime?
+  approvalReference String?   @db.VarChar(200)
+  active            Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Piso nacional — nunca se reemplaza un valor, se cierra y se agrega uno nuevo.
+model ApsNationalMinimumBaseSalary {
+  id                   String              @id @default(cuid())
+  category             ApsEmployeeCategory @relation(fields: [categoryId], references: [id])
+  categoryId           String
+  weeklyHoursReference Int
+  amount               Decimal             @db.Decimal(12, 2)
+
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+  legalReference  String?   @db.VarChar(200)
+  publicationDate DateTime?
+  active          Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Maestro de carrera del funcionario — 1:1, siempre hay a lo más una carrera
+// activa por funcionario.
+model ApsCareer {
+  id                     String              @id @default(cuid())
+  employee               Employee            @relation(fields: [employeeId], references: [id])
+  employeeId             String              @unique
+  administrativeEntity   LegalEntity         @relation(fields: [administrativeEntityId], references: [id])
+  administrativeEntityId String
+  category               ApsEmployeeCategory @relation(fields: [categoryId], references: [id])
+  categoryId             String
+
+  currentLevel        Int
+  experiencePoints    Decimal @default(0) @db.Decimal(10, 4)
+  trainingPoints      Decimal @default(0) @db.Decimal(10, 4)
+  totalPoints         Decimal @default(0) @db.Decimal(10, 4)
+  recognizedBienniums Int     @default(0)
+
+  careerStartDate    DateTime
+  levelEffectiveDate DateTime
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        String    @default("ACTIVE") @db.VarChar(30) // ACTIVE / SUSPENDED / CLOSED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Hoja de Carrera Funcionaria electrónica: un evento por cada hito relevante.
+model ApsCareerHistory {
+  id         String   @id @default(cuid())
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+
+  eventType     ApsCareerEventType
+  eventDate     DateTime
+  effectiveDate DateTime
+
+  category      ApsEmployeeCategory? @relation(fields: [categoryId], references: [id])
+  categoryId    String?
+  previousLevel Int?
+  newLevel      Int?
+
+  experiencePoints Decimal? @db.Decimal(10, 4)
+  trainingPoints   Decimal? @db.Decimal(10, 4)
+  totalPoints      Decimal? @db.Decimal(10, 4)
+  bienniums        Int?
+
+  resolutionNumber String?   @db.VarChar(60)
+  resolutionDate   DateTime?
+  description      String?   @db.VarChar(500)
+
+  sourceEntity String? @db.VarChar(60) // nombre de la tabla que originó el evento (sin FK física, source polimórfico)
+  sourceId     String?
+
+  employeeEvent   EmployeeEvent? @relation(fields: [employeeEventId], references: [id])
+  employeeEventId String?
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.VarChar(150)
+}
+
+// ---- Dominio 4: experiencia y bienios (maestro-detalle) ---------------------
+//
+// ApsBiennium es el MAESTRO (un bienio en curso o reconocido); ApsRecognizedService
+// es el DETALLE (cada período de servicio que aporta días a ese bienio).
+
+model ApsLaborInstitution {
+  id              String    @id @default(cuid())
+  code            String    @unique @db.VarChar(30)
+  name            String    @db.VarChar(200)
+  institutionType String    @db.VarChar(40) // MUNICIPALITY / HEALTH_SERVICE / MUNICIPAL_CORPORATION / PUBLIC_SERVICE / PRIVATE / OTHER
+  aps             Boolean   @default(false)
+  publicSector    Boolean   @default(false)
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+  active          Boolean   @default(true)
+
+  recognizedServices ApsRecognizedService[]
+
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsRecognizedService {
+  id            String              @id @default(cuid())
+  employee      Employee            @relation(fields: [employeeId], references: [id])
+  employeeId    String
+  institution   ApsLaborInstitution @relation(fields: [institutionId], references: [id])
+  institutionId String
+  biennium      ApsBiennium?        @relation(fields: [bienniumId], references: [id], onDelete: SetNull)
+  bienniumId    String?
+
+  serviceType       String  @db.VarChar(40) // TITULAR, CONTRATA, HONORARIOS, SUPLENCIA
+  legalRelationship String? @db.VarChar(40)
+  positionName      String? @db.VarChar(150)
+
+  startDate DateTime
+  endDate   DateTime?
+
+  calendarDays   Int
+  recognizedDays Int
+  excludedDays   Int @default(0)
+
+  apsService       Boolean @default(false)
+  publicService    Boolean @default(false)
+  municipalService Boolean @default(false)
+
+  recognized       Boolean   @default(false)
+  recognitionDate  DateTime?
+  resolutionNumber String?   @db.VarChar(60)
+  resolutionDate   DateTime?
+  documentId       String?
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        String    @default("PENDING") @db.VarChar(30) // PENDING / RECOGNIZED / REJECTED
+
+  exclusions ApsServiceExclusion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsServiceExclusion {
+  id         String               @id @default(cuid())
+  employee   Employee             @relation(fields: [employeeId], references: [id])
+  employeeId String
+  service    ApsRecognizedService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId  String
+
+  exclusionType   ApsServiceExclusionType
+  startDate       DateTime
+  endDate         DateTime
+  days            Int
+  affectsBiennium Boolean                 @default(true)
+  reason          String?                 @db.VarChar(300)
+  legalReference  String?                 @db.VarChar(200)
+  documentId      String?
+
+  createdAt DateTime @default(now())
+}
+
+model ApsBiennium {
+  id         String   @id @default(cuid())
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+
+  bienniumNumber Int // 1..15 (tope legal, ver ApsExperienceRule)
+
+  periodStartDate DateTime
+  periodEndDate   DateTime?
+
+  recognizedServiceDays Int @default(0)
+  excludedDays          Int @default(0)
+
+  completionDate   DateTime?
+  effectiveDate    DateTime?
+  experiencePoints Decimal?  @db.Decimal(10, 4)
+
+  recognitionResolution String?   @db.VarChar(60)
+  recognitionDate       DateTime?
+
+  status ApsBienniumStatus @default(IN_PROGRESS)
+
+  recognizedServices ApsRecognizedService[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId, bienniumNumber])
+}
+
+// Puntaje por N° de bienio, parametrizable — nunca codificado en el algoritmo.
+model ApsExperienceRule {
+  id                     String               @id @default(cuid())
+  administrativeEntity   LegalEntity?         @relation(fields: [administrativeEntityId], references: [id])
+  administrativeEntityId String?
+  category               ApsEmployeeCategory? @relation(fields: [categoryId], references: [id])
+  categoryId             String?
+  bienniumNumber         Int
+  points                 Decimal              @db.Decimal(10, 4)
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+// ---- Dominio 5: capacitación (maestro-detalle) ------------------------------
+//
+// ApsEmployeeTrainingYear es el MAESTRO (control anual por funcionario);
+// EmployeeApsTraining es el DETALLE (cada curso tomado ese año).
+
+model ApsTrainingType {
+  id       String  @id @default(cuid())
+  code     String  @unique @db.VarChar(30) // COURSE / INTERNSHIP / WORKSHOP / SEMINAR / DIPLOMA / SPECIALIZATION / MISSION_STUDY / CONGRESS / OTHER
+  name     String  @db.VarChar(150)
+  isActive Boolean @default(true)
+
+  trainingActivities ApsTrainingActivity[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsTrainingTechnicalLevel {
+  id            String    @id @default(cuid())
+  code          String    @unique @db.VarChar(20) // LOW / MEDIUM / HIGH
+  name          String    @db.VarChar(100)
+  factor        Decimal   @db.Decimal(6, 4)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  trainingActivities ApsTrainingActivity[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Tipificación de evaluación de capacitación (pedida explícitamente).
+model ApsTrainingEvaluationLevel {
+  id            String    @id @default(cuid())
+  code          String    @unique @db.VarChar(20) // MINIMUM / MEDIUM / MAXIMUM
+  name          String    @db.VarChar(100)
+  minimumGrade  Decimal   @db.Decimal(5, 2)
+  maximumGrade  Decimal   @db.Decimal(5, 2)
+  factor        Decimal   @db.Decimal(6, 4) // 0.4000-1.0000 según reglamento
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsTrainingDurationRule {
+  id            String    @id @default(cuid())
+  minimumHours  Int
+  maximumHours  Int? // nulo = sin techo (tramo "80+")
+  points        Decimal   @db.Decimal(10, 4)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+// El curso/estadía en sí — mantenedor "Cursos".
+model ApsTrainingActivity {
+  id                         String                    @id @default(cuid())
+  code                       String                    @unique @db.VarChar(40)
+  name                       String                    @db.VarChar(200)
+  trainingType               ApsTrainingType           @relation(fields: [trainingTypeId], references: [id])
+  trainingTypeId             String
+  institution                EducationInstitution      @relation(fields: [institutionId], references: [id])
+  institutionId              String
+  description                String?                   @db.VarChar(500)
+  pedagogicalHours           Int
+  technicalLevel             ApsTrainingTechnicalLevel @relation(fields: [technicalLevelId], references: [id])
+  technicalLevelId           String
+  startDate                  DateTime?
+  endDate                    DateTime?
+  includedInMunicipalProgram Boolean                   @default(false)
+  minsalRecognized           Boolean                   @default(false)
+  minimumAttendance          Decimal?                  @db.Decimal(5, 2)
+  evaluationRequired         Boolean                   @default(true)
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        String    @default("DRAFT") @db.VarChar(30) // DRAFT / ACTIVE / INACTIVE
+
+  participations ApsMunicipalTrainingProgramItem[]
+  enrollments    EmployeeApsTraining[]
+
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmployeeApsTraining {
+  id                 String                  @id @default(cuid())
+  employee           Employee                @relation(fields: [employeeId], references: [id])
+  employeeId         String
+  trainingActivity   ApsTrainingActivity     @relation(fields: [trainingActivityId], references: [id])
+  trainingActivityId String
+  trainingYear       ApsEmployeeTrainingYear @relation(fields: [trainingYearId], references: [id], onDelete: Cascade)
+  trainingYearId     String
+
+  registrationDate     DateTime
+  attendancePercentage Decimal? @db.Decimal(5, 2)
+  finalGrade           Decimal? @db.Decimal(5, 2)
+  approved             Boolean?
+
+  durationPoints   Decimal? @db.Decimal(10, 4)
+  evaluationFactor Decimal? @db.Decimal(6, 4)
+  technicalFactor  Decimal? @db.Decimal(6, 4)
+  calculatedPoints Decimal? @db.Decimal(10, 4)
+  recognizedPoints Decimal? @db.Decimal(10, 4)
+
+  recognitionDate       DateTime?
+  recognitionResolution String?   @db.VarChar(60)
+  careerYear            Int
+  documentId            String?
+
+  status ApsTrainingParticipationStatus @default(REGISTERED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsEmployeeTrainingYear {
+  id         String   @id @default(cuid())
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+  year       Int
+
+  earnedPoints            Decimal  @default(0) @db.Decimal(10, 4)
+  recognizedPoints        Decimal  @default(0) @db.Decimal(10, 4)
+  computablePoints        Decimal  @default(0) @db.Decimal(10, 4)
+  annualLimit             Decimal? @db.Decimal(10, 4)
+  careerAccumulatedPoints Decimal  @default(0) @db.Decimal(10, 4)
+
+  closed      Boolean   @default(false)
+  closingDate DateTime?
+
+  trainings EmployeeApsTraining[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId, year])
+}
+
+model ApsMunicipalTrainingProgram {
+  id                     String           @id @default(cuid())
+  administrativeEntity   LegalEntity      @relation(fields: [administrativeEntityId], references: [id])
+  administrativeEntityId String
+  year                   Int
+  programCode            String           @unique @db.VarChar(40)
+  name                   String           @db.VarChar(200)
+  approvalDate           DateTime?
+  resolutionNumber       String?          @db.VarChar(60)
+  startDate              DateTime
+  endDate                DateTime
+  status                 ApsProgramStatus @default(DRAFT)
+
+  items ApsMunicipalTrainingProgramItem[]
+
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsMunicipalTrainingProgramItem {
+  id                 String                      @id @default(cuid())
+  program            ApsMunicipalTrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  programId          String
+  trainingActivity   ApsTrainingActivity         @relation(fields: [trainingActivityId], references: [id])
+  trainingActivityId String
+  category           ApsEmployeeCategory?        @relation(fields: [categoryId], references: [id])
+  categoryId         String?
+  targetGroup        String?                     @db.VarChar(150)
+  plannedSlots       Int?
+  budget             Decimal?                    @db.Decimal(14, 2)
+  priority           Int?
+}
+
+// ---- Dominio 6: formación académica e instituciones -------------------------
+
+model EducationInstitutionType {
+  id       String  @id @default(cuid())
+  code     String  @unique @db.VarChar(40)
+  name     String  @db.VarChar(150)
+  isActive Boolean @default(true)
+
+  institutions EducationInstitution[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Mantenedor "Instituciones académicas".
+model EducationInstitution {
+  id                 String                   @id @default(cuid())
+  code               String                   @unique @db.VarChar(40)
+  name               String                   @db.VarChar(200)
+  institutionType    EducationInstitutionType @relation(fields: [institutionTypeId], references: [id])
+  institutionTypeId  String
+  rut                String?                  @db.VarChar(12)
+  country            Country                  @relation(fields: [countryId], references: [id])
+  countryId          String
+  recognizedByState  Boolean                  @default(true)
+  recognizedByMinsal Boolean                  @default(false)
+  accreditationCode  String?                  @db.VarChar(60)
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  active        Boolean   @default(true)
+
+  academicBackgrounds EmployeeAcademicBackground[]
+  postgraduates       ApsPostgraduate[]
+  trainingActivities  ApsTrainingActivity[]
+
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EducationType {
+  id                 String  @id @default(cuid())
+  code               String  @unique @db.VarChar(40) // TECHNICAL_TITLE, PROFESSIONAL_TITLE, BACHELOR, LICENCIATURA, SPECIALTY, DIPLOMA, POSTGRADUATE_DIPLOMA, MASTER, DOCTORATE, POSTDOCTORATE, COURSE, INTERNSHIP, SEMINAR, WORKSHOP, CONGRESS, OTHER
+  name               String  @db.VarChar(150)
+  countsForApsCareer Boolean @default(false) // formación académica != capacitación válida para puntaje
+  isActive           Boolean @default(true)
+
+  academicBackgrounds EmployeeAcademicBackground[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmployeeAcademicBackground {
+  id              String               @id @default(cuid())
+  employee        Employee             @relation(fields: [employeeId], references: [id])
+  employeeId      String
+  educationType   EducationType        @relation(fields: [educationTypeId], references: [id])
+  educationTypeId String
+  institution     EducationInstitution @relation(fields: [institutionId], references: [id])
+  institutionId   String
+
+  programName String  @db.VarChar(200)
+  titleName   String? @db.VarChar(200)
+  specialty   String? @db.VarChar(150)
+
+  startDate       DateTime?
+  endDate         DateTime?
+  graduationDate  DateTime?
+  certificateDate DateTime?
+  totalHours      Int?
+  semesters       Int?
+
+  country   Country? @relation(fields: [countryId], references: [id])
+  countryId String?
+
+  recognizedInChile    Boolean @default(true)
+  recognitionAuthority String? @db.VarChar(150)
+  documentId           String?
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        ApsAcademicStatus @default(IN_PROGRESS)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsPostgraduate {
+  id               String               @id @default(cuid())
+  employee         Employee             @relation(fields: [employeeId], references: [id])
+  employeeId       String
+  postgraduateType String               @db.VarChar(30) // SPECIALIZATION / POSTGRADUATE_DIPLOMA / MASTER / DOCTORATE
+  institution      EducationInstitution @relation(fields: [institutionId], references: [id])
+  institutionId    String
+  name             String               @db.VarChar(200)
+  specialty        ApsProfession?       @relation(fields: [specialtyId], references: [id])
+  specialtyId      String?
+
+  startDate       DateTime?
+  endDate         DateTime?
+  totalHours      Int?
+  certificateDate DateTime?
+  approved        Boolean   @default(false)
+  apsRelated      Boolean   @default(false)
+  recognized      Boolean   @default(false)
+  recognitionDate DateTime?
+  documentId      String?
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        ApsAcademicStatus @default(IN_PROGRESS)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---- Dominio 7: mérito ------------------------------------------------------
+
+model ApsPerformanceEvaluation {
+  id                   String   @id @default(cuid())
+  employee             Employee @relation(fields: [employeeId], references: [id])
+  employeeId           String
+  evaluationPeriodCode String   @db.VarChar(20)
+
+  evaluationStart DateTime
+  evaluationEnd   DateTime
+  score           Decimal  @db.Decimal(6, 2)
+  listNumber      Int?
+  qualification   String?  @db.VarChar(60)
+
+  rankingPosition   Int?
+  rankingPercentile Decimal? @db.Decimal(5, 2)
+
+  evaluationDate DateTime
+  appealed       Boolean  @default(false)
+  appealResult   String?  @db.VarChar(200)
+  finalScore     Decimal? @db.Decimal(6, 2)
+  status         String   @default("DRAFT") @db.VarChar(30) // DRAFT / FINAL / APPEALED / RESOLVED
+
+  meritAssignments ApsMeritAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsMeritBand {
+  id            String    @id @default(cuid())
+  code          String    @unique @db.VarChar(20)
+  name          String    @db.VarChar(100)
+  percentage    Decimal   @db.Decimal(6, 4)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  meritAssignments ApsMeritAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsMeritAssignment {
+  id                      String                   @id @default(cuid())
+  employee                Employee                 @relation(fields: [employeeId], references: [id])
+  employeeId              String
+  performanceEvaluation   ApsPerformanceEvaluation @relation(fields: [performanceEvaluationId], references: [id])
+  performanceEvaluationId String
+  meritBand               ApsMeritBand             @relation(fields: [meritBandId], references: [id])
+  meritBandId             String
+
+  percentage      Decimal  @db.Decimal(6, 4)
+  calculationBase String   @db.VarChar(30)
+  amount          Decimal? @db.Decimal(12, 2)
+
+  effectiveFrom    DateTime
+  effectiveTo      DateTime?
+  resolutionNumber String?   @db.VarChar(60)
+  status           String    @default("ACTIVE") @db.VarChar(30)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---- Dominio 8: dotación APS -------------------------------------------------
+
+model ApsStaffingPosition {
+  id                     String              @id @default(cuid())
+  administrativeEntity   LegalEntity         @relation(fields: [administrativeEntityId], references: [id])
+  administrativeEntityId String
+  facility               ApsHealthFacility   @relation(fields: [facilityId], references: [id])
+  facilityId             String
+  year                   Int
+  category               ApsEmployeeCategory @relation(fields: [categoryId], references: [id])
+  categoryId             String
+  cargo                  Cargo               @relation(fields: [cargoId], references: [id])
+  cargoId                String
+
+  plannedHours    Int
+  authorizedHours Int
+  occupiedHours   Int @default(0)
+  availableHours  Int @default(0)
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  employeeAssignments ApsEmployeeAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsEmployeeAssignment {
+  id                 String               @id @default(cuid())
+  employee           Employee             @relation(fields: [employeeId], references: [id])
+  employeeId         String
+  facility           ApsHealthFacility    @relation(fields: [facilityId], references: [id])
+  facilityId         String
+  staffingPosition   ApsStaffingPosition? @relation(fields: [staffingPositionId], references: [id])
+  staffingPositionId String?
+  category           ApsEmployeeCategory  @relation(fields: [categoryId], references: [id])
+  categoryId         String
+  careerLevel        Int
+  cargo              Cargo                @relation(fields: [cargoId], references: [id])
+  cargoId            String
+
+  weeklyHours  Int
+  contractType String @db.VarChar(30) // espejo informativo de ContractType.code al momento de la asignación
+
+  startDate DateTime
+  endDate   DateTime?
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        String    @default("ACTIVE") @db.VarChar(30)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsWorkSchedule {
+  id         String   @id @default(cuid())
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+
+  weeklyHours   Int
+  fullTimeHours Int // referencia de jornada completa (44)
+  percentage    Decimal @db.Decimal(6, 4) // weeklyHours / fullTimeHours
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+// ---- Dominio 9: responsabilidades directivas --------------------------------
+
+model ApsResponsibilityType {
+  id            String   @id @default(cuid())
+  code          String   @unique @db.VarChar(40)
+  name          String   @db.VarChar(150)
+  maxPercentage Decimal? @db.Decimal(6, 4)
+  isActive      Boolean  @default(true)
+
+  assignments ApsResponsibilityAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsResponsibilityAssignment {
+  id                   String                @id @default(cuid())
+  employee             Employee              @relation(fields: [employeeId], references: [id])
+  employeeId           String
+  facility             ApsHealthFacility     @relation(fields: [facilityId], references: [id])
+  facilityId           String
+  responsibilityType   ApsResponsibilityType @relation(fields: [responsibilityTypeId], references: [id])
+  responsibilityTypeId String
+  cargo                Cargo?                @relation(fields: [cargoId], references: [id])
+  cargoId              String?
+
+  percentage      Decimal @db.Decimal(6, 4)
+  calculationBase String  @db.VarChar(30)
+
+  startDate DateTime
+  endDate   DateTime?
+
+  resolutionNumber String?   @db.VarChar(60)
+  approvalDate     DateTime?
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        String    @default("ACTIVE") @db.VarChar(30)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---- Dominio 10: condiciones especiales (zona, desempeño difícil, transitorias) ----
+
+model ApsDifficultPerformanceFacility {
+  id                 String            @id @default(cuid())
+  facility           ApsHealthFacility @relation(fields: [facilityId], references: [id])
+  facilityId         String
+  year               Int
+  classificationType String            @db.VarChar(40) // aislamiento, dispersión, marginalidad, riesgo
+  difficultyBand     String            @db.VarChar(20)
+  percentage         Decimal           @db.Decimal(6, 4)
+  decreeNumber       String?           @db.VarChar(60)
+  decreeDate         DateTime?
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  active        Boolean   @default(true)
+
+  employeeAssignments ApsEmployeeDifficultPerformance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApsEmployeeDifficultPerformance {
+  id                       String                          @id @default(cuid())
+  employee                 Employee                        @relation(fields: [employeeId], references: [id])
+  employeeId               String
+  facilityClassification   ApsDifficultPerformanceFacility @relation(fields: [facilityClassificationId], references: [id])
+  facilityClassificationId String
+
+  percentage    Decimal   @db.Decimal(6, 4)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+model ApsZoneAssignment {
+  id             String   @id @default(cuid())
+  code           String   @unique @db.VarChar(30)
+  name           String   @db.VarChar(150)
+  commune        Commune? @relation(fields: [communeId], references: [id])
+  communeId      String?
+  percentage     Decimal  @db.Decimal(6, 4)
+  legalReference String?  @db.VarChar(200)
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  employeeAssignments EmployeeApsZoneAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmployeeApsZoneAssignment {
+  id               String             @id @default(cuid())
+  employee         Employee           @relation(fields: [employeeId], references: [id])
+  employeeId       String
+  zoneAssignment   ApsZoneAssignment  @relation(fields: [zoneAssignmentId], references: [id])
+  zoneAssignmentId String
+  facility         ApsHealthFacility? @relation(fields: [facilityId], references: [id])
+  facilityId       String?
+
+  percentage    Decimal   @db.Decimal(6, 4) // puede diferir del de la zona si hay tope individual
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+// Requiere aprobación del Concejo Municipal y vence a más tardar el 31 de
+// diciembre del año presupuestario (validado en el servicio, no en el esquema).
+model ApsSpecialTemporaryAssignment {
+  id                     String               @id @default(cuid())
+  administrativeEntity   LegalEntity          @relation(fields: [administrativeEntityId], references: [id])
+  administrativeEntityId String
+  code                   String               @unique @db.VarChar(40)
+  name                   String               @db.VarChar(200)
+  description            String?              @db.VarChar(500)
+  category               ApsEmployeeCategory? @relation(fields: [categoryId], references: [id])
+  categoryId             String?
+  careerLevel            Int?
+
+  percentage      Decimal? @db.Decimal(6, 4)
+  fixedAmount     Decimal? @db.Decimal(12, 2)
+  calculationBase String?  @db.VarChar(30)
+
+  budgetYear    Int
+  effectiveFrom DateTime
+  effectiveTo   DateTime // máximo 31-12 del budgetYear
+
+  municipalCouncilApproval Boolean @default(false)
+  resolutionNumber         String? @db.VarChar(60)
+  active                   Boolean @default(true)
+
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---- Puente a Nómina ---------------------------------------------------------
+//
+// Snapshot remuneracional 1:1 con Contract, sólo aplicable cuando
+// Contract.laborRegimeId = LEY_19378. Los conceptos de nómina (sueldo base,
+// asignación APS, zona, responsabilidad, desempeño difícil, mérito,
+// asignaciones especiales, postgrado) NO se modelan aquí como tabla propia:
+// se crean como filas de PayrollConcept (ya existente) y sus reglas como
+// PayrollFormula (ya existente) filtradas por laborRegimeId, leyendo esta
+// tabla — así Nómina nunca interpreta la Ley 19.378 directamente.
+model ApsContractProfile {
+  id         String   @id @default(cuid())
+  contract   Contract @relation(fields: [contractId], references: [id])
+  contractId String   @unique
+
+  category    ApsEmployeeCategory @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  careerLevel Int
+  facility    ApsHealthFacility   @relation(fields: [facilityId], references: [id])
+  facilityId  String
+  weeklyHours Int
+
+  baseSalaryAmount               Decimal  @db.Decimal(12, 2)
+  primaryCareAssignmentAmount    Decimal? @db.Decimal(12, 2)
+  zonePercentage                 Decimal? @db.Decimal(6, 4)
+  zoneAmount                     Decimal? @db.Decimal(12, 2)
+  difficultPerformancePercentage Decimal? @db.Decimal(6, 4)
+  difficultPerformanceAmount     Decimal? @db.Decimal(12, 2)
+  responsibilityPercentage       Decimal? @db.Decimal(6, 4)
+  responsibilityAmount           Decimal? @db.Decimal(12, 2)
+  meritPercentage                Decimal? @db.Decimal(6, 4)
+  meritAmount                    Decimal? @db.Decimal(12, 2)
+  specialAssignmentAmount        Decimal? @db.Decimal(12, 2)
+  postgraduateAssignmentAmount   Decimal? @db.Decimal(12, 2)
+  totalApsAssignments            Decimal  @default(0) @db.Decimal(12, 2)
+
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  version       Int       @default(1)
+  status        String    @default("DRAFT") @db.VarChar(30) // DRAFT / ACTIVE / SUPERSEDED
+
+  createdBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

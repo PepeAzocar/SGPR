@@ -773,3 +773,188 @@ export interface GeneratedDocument {
   cancelReason?: string | null;
   tokens?: GeneratedDocumentToken[];
 }
+
+// ---------------------------------------------------------------------------
+// Carrera Funcionaria APS (Ley N°19.378)
+// ---------------------------------------------------------------------------
+
+export interface ApsLaborInstitution {
+  id: string;
+  code: string;
+  name: string;
+  institutionType: string;
+  aps: boolean;
+  publicSector: boolean;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  active: boolean;
+}
+
+export type ApsServiceExclusionType = 'UNPAID_LEAVE' | 'UNRECOGNIZED_SERVICE' | 'SERVICE_INTERRUPTION' | 'OTHER';
+
+export interface ApsServiceExclusion {
+  id: string;
+  serviceId: string;
+  exclusionType: ApsServiceExclusionType;
+  startDate: string;
+  endDate: string;
+  days: number;
+  affectsBiennium: boolean;
+  reason?: string | null;
+  legalReference?: string | null;
+}
+
+export interface ApsRecognizedService {
+  id: string;
+  employeeId: string;
+  institutionId: string;
+  institution?: ApsLaborInstitution;
+  bienniumId?: string | null;
+  serviceType: string;
+  legalRelationship?: string | null;
+  positionName?: string | null;
+  startDate: string;
+  endDate?: string | null;
+  calendarDays: number;
+  recognizedDays: number;
+  excludedDays: number;
+  apsService: boolean;
+  publicService: boolean;
+  municipalService: boolean;
+  recognized: boolean;
+  recognitionDate?: string | null;
+  resolutionNumber?: string | null;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  status: string;
+  exclusions?: ApsServiceExclusion[];
+}
+
+export type ApsBienniumStatus = 'IN_PROGRESS' | 'COMPLETED' | 'RECOGNIZED' | 'SUSPENDED' | 'ANNULLED';
+
+export interface ApsBiennium {
+  id: string;
+  employeeId: string;
+  employee?: { id: string; firstName: string; lastName: string; secondLastName?: string | null; rut?: string | null };
+  bienniumNumber: number;
+  periodStartDate: string;
+  periodEndDate?: string | null;
+  recognizedServiceDays: number;
+  excludedDays: number;
+  completionDate?: string | null;
+  effectiveDate?: string | null;
+  experiencePoints?: string | null;
+  recognitionResolution?: string | null;
+  recognitionDate?: string | null;
+  status: ApsBienniumStatus;
+  recognizedServices?: ApsRecognizedService[];
+}
+
+export interface ApsTrainingType {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface ApsTrainingTechnicalLevel {
+  id: string;
+  code: string;
+  name: string;
+  factor: string;
+}
+
+export interface EducationInstitution {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface ApsTrainingActivity {
+  id: string;
+  code: string;
+  name: string;
+  trainingTypeId: string;
+  trainingType?: ApsTrainingType;
+  institutionId: string;
+  institution?: EducationInstitution;
+  pedagogicalHours: number;
+  technicalLevelId: string;
+  technicalLevel?: ApsTrainingTechnicalLevel;
+  status: string;
+}
+
+export type ApsTrainingParticipationStatus = 'REGISTERED' | 'IN_PROGRESS' | 'APPROVED' | 'FAILED' | 'RECOGNIZED' | 'REJECTED';
+
+export interface EmployeeApsTraining {
+  id: string;
+  employeeId: string;
+  trainingActivityId: string;
+  trainingActivity?: ApsTrainingActivity;
+  trainingYearId: string;
+  registrationDate: string;
+  attendancePercentage?: string | null;
+  finalGrade?: string | null;
+  approved?: boolean | null;
+  durationPoints?: string | null;
+  evaluationFactor?: string | null;
+  technicalFactor?: string | null;
+  calculatedPoints?: string | null;
+  recognizedPoints?: string | null;
+  careerYear: number;
+  status: ApsTrainingParticipationStatus;
+}
+
+export interface ApsEmployeeTrainingYear {
+  id: string;
+  employeeId: string;
+  employee?: { id: string; firstName: string; lastName: string; secondLastName?: string | null; rut?: string | null };
+  year: number;
+  earnedPoints: string;
+  recognizedPoints: string;
+  computablePoints: string;
+  annualLimit?: string | null;
+  careerAccumulatedPoints: string;
+  closed: boolean;
+  closingDate?: string | null;
+  trainings?: EmployeeApsTraining[];
+}
+
+export interface ApsHealthFacility {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface ApsEmployeeCategory {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface ApsContractProfile {
+  id: string;
+  contractId: string;
+  categoryId: string;
+  category?: ApsEmployeeCategory;
+  careerLevel: number;
+  facilityId: string;
+  facility?: ApsHealthFacility;
+  weeklyHours: number;
+  baseSalaryAmount: string;
+  primaryCareAssignmentAmount?: string | null;
+  zonePercentage?: string | null;
+  zoneAmount?: string | null;
+  difficultPerformancePercentage?: string | null;
+  difficultPerformanceAmount?: string | null;
+  responsibilityPercentage?: string | null;
+  responsibilityAmount?: string | null;
+  meritPercentage?: string | null;
+  meritAmount?: string | null;
+  specialAssignmentAmount?: string | null;
+  postgraduateAssignmentAmount?: string | null;
+  totalApsAssignments: string;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  version: number;
+  status: string;
+}

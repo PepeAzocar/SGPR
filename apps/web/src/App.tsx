@@ -26,6 +26,9 @@ import { ContractDocumentsPage } from './pages/ContractDocumentsPage';
 import { GeneratedDocumentPreviewPage } from './pages/GeneratedDocumentPreviewPage';
 import { PayslipLookupPage } from './pages/PayslipLookupPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
+import { ApsCatalogsPage } from './pages/ApsCatalogsPage';
+import { ApsBienniumsPage } from './pages/ApsBienniumsPage';
+import { ApsTrainingYearsPage } from './pages/ApsTrainingYearsPage';
 
 export default function App() {
   return (
@@ -95,6 +98,9 @@ export default function App() {
             <Route path="/payroll-formulas" element={<PayrollFormulasPage />} />
             <Route path="/contract-documents" element={<ContractDocumentsPage />} />
             <Route path="/contract-documents/:id/preview" element={<GeneratedDocumentPreviewPage />} />
+            <Route path="/aps-catalogs" element={<ApsCatalogsPage />} />
+            <Route path="/aps-bienniums" element={<ApsBienniumsPage />} />
+            <Route path="/aps-training-years" element={<ApsTrainingYearsPage />} />
             <Route
               path="/earnings-imputation"
               element={
