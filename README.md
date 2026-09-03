@@ -123,6 +123,60 @@ se implementó el grafo de dependencias entre fórmulas (`PAYROLL_FORMULA_DEPEND
 prueba guardados (`PAYROLL_FORMULA_TEST`) — el simulador evalúa al vuelo pero
 no persiste casos con resultado esperado/actual.
 
+## Gestión Contractual — motor de documentos contractuales
+
+Utilidades del sistema → **Gestión Contractual** (`/contract-documents`,
+backend en `apps/api/src/contract-documents/`). Separa la lógica contractual
+(qué documento corresponde generar) de la generación física del documento,
+siguiendo la misma filosofía del motor de fórmulas de nómina: nunca se edita
+contenido ya publicado, todo cambio crea una nueva versión.
+
+- **Matriz** (`contract-matrices`): sólo decide qué **plantilla** usar según
+  tipo de documento (`CONTRATO`/`ANEXO`/`CERTIFICADO`) + régimen jurídico +
+  tipo de contrato + prioridad. Ciclo de vida simple `DRAFT → ACTIVE →
+  INACTIVE` (editable sólo en borrador); al activarla se cierra
+  automáticamente cualquier otra matriz activa con el mismo alcance, igual
+  mecanismo que `PayrollFormula.activate()`.
+- **Plantillas** (`contract-templates`) y **cláusulas** (`clauses`): el
+  contenido legal pesado. Cada una tiene versiones (`.../versions`) con
+  ciclo `DRAFT → PUBLISHED → RETIRED`; **nunca se edita una versión
+  publicada**, sólo se crea una nueva. La plantilla es un shell HTML con el
+  placeholder `{{clauses}}`, que el motor reemplaza por las cláusulas
+  asignadas a la matriz (`MatrixClause`, en el orden de `sequence`).
+- **Tokens** (`document-tokens`): catálogo documental (`employee.fullName`,
+  `contract.startDate`, `compensation.baseSalary`, etc.) que alimenta el
+  selector "Insertar token" del editor. La resolución real vive en código
+  (`engine/token-resolvers.ts`), no en el catálogo — AFP, salud y cuenta
+  bancaria se resuelven "vigentes a la fecha efectiva" con el mismo patrón
+  `effectiveFrom <= fecha AND (effectiveTo IS NULL OR effectiveTo >= fecha)`
+  que usa `payroll-periods.service.ts`.
+- **Motor de renderizado** (`engine/template-engine.ts`): parser manual, sin
+  `eval`, que entiende `{{token}}`, `{{token|formatter}}`,
+  `{{token|formatter:arg}}` y bloques `{{#if token}}...{{/if}}`. Formatos
+  disponibles: `dateLong`, `currencyCLP`, `currencyCLPWords`, `rut`,
+  `uppercase`, `decimal:N` (`engine/formatters.ts`).
+- **Documentos generados** (`generated-documents`): `POST .../preview` (no
+  persiste, útil para probar plantillas) y `POST .../generate` (persiste).
+  Un documento generado congela el HTML final, su hash SHA-256 y el valor de
+  cada token usado (`GeneratedDocumentToken`) — nunca se vuelve a renderizar
+  con datos actuales, aunque el colaborador cambie después de sueldo, cargo o
+  dirección. Se exporta como PDF desde el navegador (`Imprimir / Guardar
+  PDF`, reutiliza los estilos `@media print` existentes) en vez de generarse
+  en el servidor: el proyecto no tenía ninguna librería PDF/DOCX ni storage
+  de archivos, e introducir esa infraestructura quedó fuera de esta entrega.
+
+**Deliberadamente fuera de esta entrega**: generación automática disparada
+por movimientos del colaborador (`EmployeeEvent`) — hoy la generación es
+siempre manual, eligiendo empleado/matriz/fecha desde "Documentos
+generados"; flujo de aprobación y firma electrónica (`requiresApproval`/
+`requiresSignature` existen como columnas reservadas, sin flujo detrás);
+exportación a DOCX; motor de reglas/condiciones genérico más allá del
+alcance de la matriz (documento + régimen + tipo de contrato + prioridad);
+bucles `{{#each}}` (no hay hoy tokens de tipo lista). Limitación heredada:
+`Contract.baseSalary` no está historizado, así que
+`{{compensation.baseSalary}}` siempre refleja el sueldo *actual* del
+contrato, no el vigente en una fecha efectiva pasada.
+
 ## Reglas de negocio relevantes
 
 - **Contratos sin superposición de vigencia**: un colaborador puede tener más
@@ -172,6 +226,11 @@ no persiste casos con resultado esperado/actual.
 - **Catálogos geográficos**: país, región, comuna (con dependencia
   jerárquica país → región → comuna) y nacionalidad. Alimentan los
   selectores de las fichas de colaboradores para evitar texto libre.
+- **Gestión Contractual** (`/contract-documents`): motor de documentos
+  contractuales — matrices, plantillas y cláusulas versionadas, catálogo de
+  tokens con resolución "vigente a la fecha efectiva", y generación
+  inmutable de contratos/anexos con congelamiento de datos y hash SHA-256.
+  Ver sección dedicada más arriba.
 - **Autenticación**: login JWT, roles ADMIN / RRHH / EMPLOYEE.
 
 ## Pendiente / posibles siguientes pasos

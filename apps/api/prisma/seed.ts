@@ -151,15 +151,24 @@ async function main() {
   // --- Estructura organizacional de ejemplo ---
   // LegalEntity -> BusinessUnit -> Division -> Department -> Position,
   // con CostCenter como maestro independiente referenciado desde Department y Position.
+  const legalEntityIdentity = {
+    rut: '76.123.456-7',
+    legalName: 'Imaginadem SpA',
+    address: 'Av. Providencia 1234, Oficina 501',
+    city: 'Santiago',
+    legalRepresentativeName: 'María José Contreras Silva',
+    legalRepresentativeRut: '11.222.333-4',
+  };
   const legalEntity = await prisma.legalEntity.upsert({
     where: { id: 'seed-legal-entity' },
-    update: {},
+    update: legalEntityIdentity,
     create: {
       id: 'seed-legal-entity',
       code: 'LE-001',
       name: 'Imaginadem SpA',
       effectiveFrom,
       status: 'ACTIVE',
+      ...legalEntityIdentity,
     },
   });
 
@@ -977,6 +986,189 @@ async function main() {
   for (const name of nationalities) {
     await prisma.nationality.upsert({ where: { name }, update: {}, create: { name } });
   }
+
+  // --- Motor de Documentos Contractuales: catálogo de tokens ---
+  const documentTokens: Array<{
+    code: string;
+    namespace: string;
+    name: string;
+    dataType: 'STRING' | 'DATE' | 'DECIMAL' | 'BOOLEAN';
+    description?: string;
+    sourceEntity?: string;
+    required?: boolean;
+    sensitive?: boolean;
+  }> = [
+    { code: 'employee.firstName', namespace: 'employee', name: 'Nombres', dataType: 'STRING', sourceEntity: 'PERSON' },
+    { code: 'employee.lastName', namespace: 'employee', name: 'Apellido paterno', dataType: 'STRING', sourceEntity: 'PERSON' },
+    { code: 'employee.secondLastName', namespace: 'employee', name: 'Apellido materno', dataType: 'STRING', sourceEntity: 'PERSON' },
+    { code: 'employee.fullName', namespace: 'employee', name: 'Nombre completo', dataType: 'STRING', sourceEntity: 'PERSON', required: true },
+    { code: 'employee.rut', namespace: 'employee', name: 'RUT', dataType: 'STRING', sourceEntity: 'PERSON', required: true },
+    { code: 'employee.rutFormatted', namespace: 'employee', name: 'RUT formateado', dataType: 'STRING', sourceEntity: 'PERSON' },
+    { code: 'employee.nationality', namespace: 'employee', name: 'Nacionalidad', dataType: 'STRING', sourceEntity: 'PERSON' },
+    { code: 'employee.birthDate', namespace: 'employee', name: 'Fecha de nacimiento', dataType: 'DATE', sourceEntity: 'PERSON' },
+    { code: 'employee.email', namespace: 'employee', name: 'Correo electrónico', dataType: 'STRING', sourceEntity: 'PERSON' },
+    { code: 'employee.phone', namespace: 'employee', name: 'Teléfono', dataType: 'STRING', sourceEntity: 'PERSON' },
+    { code: 'employee.address', namespace: 'employee', name: 'Dirección', dataType: 'STRING', sourceEntity: 'PERSON' },
+    { code: 'employee.commune', namespace: 'employee', name: 'Comuna', dataType: 'STRING', sourceEntity: 'PERSON' },
+    { code: 'employee.region', namespace: 'employee', name: 'Región', dataType: 'STRING', sourceEntity: 'PERSON' },
+
+    { code: 'contract.contractNumber', namespace: 'contract', name: 'N° de contrato', dataType: 'STRING', sourceEntity: 'CONTRACT' },
+    { code: 'contract.startDate', namespace: 'contract', name: 'Fecha de inicio', dataType: 'DATE', sourceEntity: 'CONTRACT', required: true },
+    { code: 'contract.endDate', namespace: 'contract', name: 'Fecha de término', dataType: 'DATE', sourceEntity: 'CONTRACT' },
+    { code: 'contract.baseSalary', namespace: 'contract', name: 'Sueldo base', dataType: 'DECIMAL', sourceEntity: 'CONTRACT' },
+    { code: 'contract.weeklyHours', namespace: 'contract', name: 'Horas semanales', dataType: 'DECIMAL', sourceEntity: 'CONTRACT' },
+    { code: 'contract.isFixedTerm', namespace: 'contract', name: '¿Es plazo fijo?', dataType: 'BOOLEAN', sourceEntity: 'CONTRACT' },
+    { code: 'contract.legalRegimeName', namespace: 'contract', name: 'Régimen jurídico', dataType: 'STRING', sourceEntity: 'CONTRACT' },
+    { code: 'contract.contractTypeName', namespace: 'contract', name: 'Tipo de contrato', dataType: 'STRING', sourceEntity: 'CONTRACT' },
+
+    { code: 'position.title', namespace: 'position', name: 'Cargo/posición', dataType: 'STRING', sourceEntity: 'POSITION', required: true },
+    { code: 'position.cargoName', namespace: 'position', name: 'Clasificación del cargo', dataType: 'STRING', sourceEntity: 'POSITION' },
+
+    { code: 'costCenter.name', namespace: 'costCenter', name: 'Centro de costo', dataType: 'STRING', sourceEntity: 'COST_CENTER' },
+    { code: 'costCenter.code', namespace: 'costCenter', name: 'Código centro de costo', dataType: 'STRING', sourceEntity: 'COST_CENTER' },
+
+    { code: 'company.name', namespace: 'company', name: 'Nombre entidad legal', dataType: 'STRING', sourceEntity: 'LEGAL_ENTITY', required: true },
+    { code: 'company.code', namespace: 'company', name: 'Código entidad legal', dataType: 'STRING', sourceEntity: 'LEGAL_ENTITY' },
+    { code: 'company.rut', namespace: 'company', name: 'RUT empleador', dataType: 'STRING', sourceEntity: 'LEGAL_ENTITY' },
+    { code: 'company.rutFormatted', namespace: 'company', name: 'RUT empleador formateado', dataType: 'STRING', sourceEntity: 'LEGAL_ENTITY' },
+    { code: 'company.legalName', namespace: 'company', name: 'Razón social', dataType: 'STRING', sourceEntity: 'LEGAL_ENTITY' },
+    { code: 'company.address', namespace: 'company', name: 'Domicilio', dataType: 'STRING', sourceEntity: 'LEGAL_ENTITY' },
+    { code: 'company.city', namespace: 'company', name: 'Ciudad', dataType: 'STRING', sourceEntity: 'LEGAL_ENTITY' },
+    { code: 'company.legalRepresentativeName', namespace: 'company', name: 'Representante legal', dataType: 'STRING', sourceEntity: 'LEGAL_ENTITY' },
+    { code: 'company.legalRepresentativeRut', namespace: 'company', name: 'RUT representante legal', dataType: 'STRING', sourceEntity: 'LEGAL_ENTITY' },
+
+    { code: 'compensation.baseSalary', namespace: 'compensation', name: 'Sueldo base vigente', dataType: 'DECIMAL', sourceEntity: 'CONTRACT', description: 'Alias de contract.baseSalary; ver limitación de historicidad en token-resolvers.ts' },
+
+    { code: 'afp.name', namespace: 'afp', name: 'AFP', dataType: 'STRING', sourceEntity: 'EMPLOYEE_AFP' },
+    { code: 'afp.workerRate', namespace: 'afp', name: 'Tasa de cotización AFP', dataType: 'DECIMAL', sourceEntity: 'EMPLOYEE_AFP' },
+
+    { code: 'health.institutionName', namespace: 'health', name: 'Institución de salud', dataType: 'STRING', sourceEntity: 'HEALTH_AFFILIATION' },
+    { code: 'health.institutionType', namespace: 'health', name: 'Tipo (Fonasa/Isapre)', dataType: 'STRING', sourceEntity: 'HEALTH_AFFILIATION' },
+    { code: 'health.planUfValue', namespace: 'health', name: 'Plan Isapre (UF)', dataType: 'DECIMAL', sourceEntity: 'HEALTH_AFFILIATION' },
+
+    { code: 'bankAccount.bankName', namespace: 'bankAccount', name: 'Banco', dataType: 'STRING', sourceEntity: 'EMPLOYEE_BANK_ACCOUNT' },
+    { code: 'bankAccount.accountTypeName', namespace: 'bankAccount', name: 'Tipo de cuenta', dataType: 'STRING', sourceEntity: 'EMPLOYEE_BANK_ACCOUNT' },
+    { code: 'bankAccount.accountHolderName', namespace: 'bankAccount', name: 'Titular de la cuenta', dataType: 'STRING', sourceEntity: 'EMPLOYEE_BANK_ACCOUNT' },
+    { code: 'bankAccount.accountNumberMasked', namespace: 'bankAccount', name: 'N° de cuenta (enmascarado)', dataType: 'STRING', sourceEntity: 'EMPLOYEE_BANK_ACCOUNT', sensitive: true },
+
+    { code: 'document.date', namespace: 'document', name: 'Fecha del documento', dataType: 'DATE', sourceEntity: 'SYSTEM', required: true },
+    { code: 'document.effectiveDate', namespace: 'document', name: 'Fecha efectiva', dataType: 'DATE', sourceEntity: 'SYSTEM', required: true },
+    { code: 'document.number', namespace: 'document', name: 'N° de documento', dataType: 'STRING', sourceEntity: 'SYSTEM' },
+
+    { code: 'clauses', namespace: 'system', name: 'Cláusulas de la matriz', dataType: 'STRING', sourceEntity: 'SYSTEM', description: 'Placeholder estructural: el motor lo reemplaza por las cláusulas asignadas a la matriz, en orden.' },
+  ];
+  for (const t of documentTokens) {
+    await prisma.documentTokenDefinition.upsert({ where: { code: t.code }, update: {}, create: t });
+  }
+
+  // --- Motor de Documentos Contractuales: cláusula, plantilla y matriz de ejemplo ---
+  const claIdentificacion = await prisma.clause.upsert({
+    where: { id: 'seed-clause-identificacion' },
+    update: {},
+    create: { id: 'seed-clause-identificacion', code: 'CLA_IDENTIFICACION', name: 'Identificación de las partes', status: 'ACTIVE' },
+  });
+  await prisma.clauseVersion.upsert({
+    where: { id: 'seed-clause-identificacion-v1' },
+    update: {},
+    create: {
+      id: 'seed-clause-identificacion-v1',
+      clauseId: claIdentificacion.id,
+      versionNumber: 1,
+      status: 'PUBLISHED',
+      publishedAt: effectiveFrom,
+      publishedBy: 'seed',
+      content:
+        '<p>En {{company.city}}, a {{document.date|dateLong}}, entre {{company.legalName}}, RUT {{company.rutFormatted}}, ' +
+        'representada por {{company.legalRepresentativeName}}, RUT {{company.legalRepresentativeRut}}, en adelante ' +
+        '"el empleador"; y don(a) {{employee.fullName}}, RUT {{employee.rutFormatted}}, en adelante "el trabajador", ' +
+        'se acuerda el siguiente contrato de trabajo:</p>',
+    },
+  });
+
+  const claRemuneracion = await prisma.clause.upsert({
+    where: { id: 'seed-clause-remuneracion' },
+    update: {},
+    create: { id: 'seed-clause-remuneracion', code: 'CLA_REMUNERACION', name: 'Remuneración', status: 'ACTIVE' },
+  });
+  await prisma.clauseVersion.upsert({
+    where: { id: 'seed-clause-remuneracion-v1' },
+    update: {},
+    create: {
+      id: 'seed-clause-remuneracion-v1',
+      clauseId: claRemuneracion.id,
+      versionNumber: 1,
+      status: 'PUBLISHED',
+      publishedAt: effectiveFrom,
+      publishedBy: 'seed',
+      content:
+        '<p><strong>PRIMERO.</strong> El trabajador prestará servicios en calidad de {{position.title}}, a contar del ' +
+        '{{contract.startDate|dateLong}}. La remuneración base será de {{compensation.baseSalary|currencyCLP}} ' +
+        '({{compensation.baseSalary|currencyCLPWords}}) mensuales, por una jornada de {{contract.weeklyHours|decimal:1}} ' +
+        'horas semanales.</p>\n' +
+        '{{#if contract.isFixedTerm}}<p><strong>SEGUNDO.</strong> El presente contrato tendrá vigencia hasta el ' +
+        '{{contract.endDate|dateLong}}.</p>{{/if}}',
+    },
+  });
+
+  const contractTemplate = await prisma.contractTemplate.upsert({
+    where: { id: 'seed-template-contrato-indefinido' },
+    update: {},
+    create: {
+      id: 'seed-template-contrato-indefinido',
+      code: 'TPL_CTR_INDEFINIDO_001',
+      name: 'Contrato de trabajo — Código del Trabajo',
+      documentType: 'CONTRATO',
+      status: 'ACTIVE',
+    },
+  });
+  const contractTemplateVersion = await prisma.contractTemplateVersion.upsert({
+    where: { id: 'seed-template-contrato-indefinido-v1' },
+    update: {},
+    create: {
+      id: 'seed-template-contrato-indefinido-v1',
+      templateId: contractTemplate.id,
+      versionNumber: 1,
+      status: 'PUBLISHED',
+      publishedAt: effectiveFrom,
+      publishedBy: 'seed',
+      content:
+        '<h1 style="text-align:center">CONTRATO DE TRABAJO</h1>\n{{clauses}}\n' +
+        '<table style="width:100%;margin-top:3rem"><tr>' +
+        '<td style="text-align:center">____________________<br/>{{employee.fullName}}<br/>TRABAJADOR</td>' +
+        '<td style="text-align:center">____________________<br/>{{company.legalRepresentativeName}}<br/>EMPLEADOR</td>' +
+        '</tr></table>',
+    },
+  });
+
+  const indefinido = await prisma.contractType.findUniqueOrThrow({
+    where: { laborRegimeId_code: { laborRegimeId: codigoTrabajo.id, code: 'INDEFINIDO' } },
+  });
+
+  const contractMatrix = await prisma.contractMatrix.upsert({
+    where: { id: 'seed-matrix-contrato-indefinido' },
+    update: {},
+    create: {
+      id: 'seed-matrix-contrato-indefinido',
+      code: 'CTR_INDEFINIDO_CODIGO_TRABAJO',
+      name: 'Contrato indefinido — Código del Trabajo',
+      documentType: 'CONTRATO',
+      legalRegimeId: codigoTrabajo.id,
+      contractTypeId: indefinido.id,
+      templateId: contractTemplate.id,
+      validFrom: effectiveFrom,
+      status: 'ACTIVE',
+    },
+  });
+  await prisma.matrixClause.upsert({
+    where: { matrixId_clauseId: { matrixId: contractMatrix.id, clauseId: claIdentificacion.id } },
+    update: {},
+    create: { matrixId: contractMatrix.id, clauseId: claIdentificacion.id, sequence: 1, mandatory: true },
+  });
+  await prisma.matrixClause.upsert({
+    where: { matrixId_clauseId: { matrixId: contractMatrix.id, clauseId: claRemuneracion.id } },
+    update: {},
+    create: { matrixId: contractMatrix.id, clauseId: claRemuneracion.id, sequence: 2, mandatory: true },
+  });
 
   console.log('Seed completado.');
 }

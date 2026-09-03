@@ -25,8 +25,12 @@ export class EmployeesService {
   }
 
   findAll() {
+    // photoUrl es una imagen en base64 (potencialmente cientos de KB por
+    // colaborador); se omite en el listado para no inflar la respuesta y
+    // sólo se entrega completa en findOne() (ficha del colaborador).
     return this.prisma.employee.findMany({
       include: currentAfpInclude,
+      omit: { photoUrl: true },
       orderBy: { lastName: 'asc' },
     });
   }

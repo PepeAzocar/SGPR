@@ -62,11 +62,21 @@ model LegalEntity {
   effectiveTo   DateTime?
   status        OrgUnitStatus @default(ACTIVE)
 
+  // Identidad legal del empleador, usada por el motor de documentos
+  // contractuales para membretes y cláusulas (razón social, domicilio,
+  // representante legal). Opcionales por compatibilidad con entidades
+  // creadas antes de este módulo.
+  rut                     String? @db.VarChar(12)
+  legalName               String? @db.VarChar(200) // razón social
+  address                 String? @db.VarChar(300)
+  city                    String? @db.VarChar(100)
+  legalRepresentativeName String? @db.VarChar(200)
+  legalRepresentativeRut  String? @db.VarChar(12)
+
   businessUnits BusinessUnit[]
   costCenters   CostCenter[]
   contracts     Contract[]
   payrollFormulas PayrollFormula[]
-
   createdBy     String?       @db.VarChar(150)
   updatedBy     String?       @db.VarChar(150)
   createdAt     DateTime      @default(now())
@@ -326,7 +336,7 @@ model Employee {
   birthCountry   String?         @db.VarChar(80) // pais_nacimiento
   birthRegion    String?         @db.VarChar(80) // region_nacimiento
   birthCommune   String?         @db.VarChar(80) // comuna_nacimiento
-  photoUrl       String?         @db.VarChar(500) // fotografia_url
+  photoUrl       String?         @db.Text // fotografia_url: data URL (imagen comprimida en base64, ver EmployeePhotoCapture en el frontend)
 
   email          String?         @unique
   phone          String?
@@ -352,6 +362,7 @@ model Employee {
   payslips       Payslip[]
   user           User?
   managedCostCenters CostCenter[] @relation("CostCenterManager")
+  generatedDocuments GeneratedDocument[]
 
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -386,6 +397,7 @@ model LaborRegime {
   contracts     Contract[]
   employeeEvents EmployeeEvent[]
   payrollFormulas PayrollFormula[]
+  contractMatrices ContractMatrix[]
 
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -413,6 +425,7 @@ model ContractType {
   effectiveTo                DateTime?
 
   contracts                  Contract[]
+  contractMatrices           ContractMatrix[]
 
   createdAt                  DateTime     @default(now())
   updatedAt                  DateTime     @updatedAt
@@ -445,6 +458,8 @@ model Contract {
   isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+
+  generatedDocuments GeneratedDocument[]
 
   @@unique([legalEntityId, contractNumber])
 }
@@ -1088,4 +1103,251 @@ model PayrollFormula {
   approvedAt        DateTime?
 
   @@unique([conceptId, version])
+}
+
+// ---------------------------------------------------------------------------
+// Motor de Documentos Contractuales ("Gestión Contractual")
+//
+// Separa la lógica contractual (qué documento corresponde generar) de la
+// generación física del documento. La ContractMatrix sólo enruta: decide qué
+// ContractTemplate usar según tipo de documento + régimen jurídico + tipo de
+// contrato + prioridad. El contenido legal pesado vive en
+// ContractTemplateVersion y ClauseVersion, que nunca se editan una vez
+// publicadas — todo cambio crea una nueva versión, igual que PayrollFormula.
+// La plantilla es un shell HTML con un placeholder {{clauses}} que el motor
+// reemplaza por las cláusulas asignadas a la matriz (MatrixClause, en orden),
+// cada una resuelta desde su versión PUBLISHED vigente a la fecha del
+// documento. Un documento generado congela el HTML final y el valor de cada
+// token usado (GeneratedDocumentToken) junto con su hash SHA-256: un
+// documento ya generado nunca se re-renderiza con datos actuales, aunque el
+// colaborador cambie de sueldo, cargo o dirección después.
+// ---------------------------------------------------------------------------
+
+enum ContractMatrixStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+}
+
+// La matriz sólo decide qué plantilla usar; no contiene el texto del
+// documento. Editable sólo en DRAFT: para reemplazar una matriz ACTIVA hay
+// que desactivarla y crear una nueva (mismo espíritu que PayrollFormula,
+// pero sin el ciclo de aprobación completo porque el riesgo real está en el
+// contenido de la plantilla/cláusulas, no en esta regla de enrutamiento).
+model ContractMatrix {
+  id           String  @id @default(cuid())
+  code         String  @db.VarChar(80)
+  name         String  @db.VarChar(200)
+  documentType String  @db.VarChar(30) // CONTRATO | ANEXO | CERTIFICADO (validado en el DTO)
+
+  legalRegime   LaborRegime?  @relation(fields: [legalRegimeId], references: [id])
+  legalRegimeId String?
+  contractType   ContractType? @relation(fields: [contractTypeId], references: [id])
+  contractTypeId String?
+
+  template   ContractTemplate @relation(fields: [templateId], references: [id])
+  templateId String
+
+  priority Int @default(500) // a igual alcance, menor valor gana
+
+  // Reservados para una etapa posterior (aprobación de documentos, firma
+  // electrónica, disparo automático desde EmployeeEvent): no hay flujo
+  // implementado todavía, se guardan para no requerir una migración futura.
+  automaticGeneration Boolean @default(false)
+  requiresApproval    Boolean @default(false)
+  requiresSignature   Boolean @default(false)
+
+  validFrom DateTime
+  validTo   DateTime?
+  status    ContractMatrixStatus @default(DRAFT)
+
+  clauses            MatrixClause[]
+  generatedDocuments GeneratedDocument[]
+
+  createdBy String?  @db.VarChar(150)
+  updatedBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TemplateVersionStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+model ContractTemplate {
+  id           String  @id @default(cuid())
+  code         String  @unique @db.VarChar(80)
+  name         String  @db.VarChar(200)
+  documentType String  @db.VarChar(30)
+  status       OrgUnitStatus @default(ACTIVE)
+
+  versions ContractTemplateVersion[]
+  matrices ContractMatrix[]
+
+  createdBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Contenido versionado de una plantilla: HTML con tokens ({{namespace.path}},
+// pipes de formato, bloques {{#if}}) y el placeholder {{clauses}} que expande
+// las cláusulas de la matriz. Nunca se edita fuera de DRAFT.
+model ContractTemplateVersion {
+  id            String                 @id @default(cuid())
+  template      ContractTemplate       @relation(fields: [templateId], references: [id])
+  templateId    String
+  versionNumber Int
+  content       String                 @db.Text
+  status        TemplateVersionStatus  @default(DRAFT)
+  validFrom     DateTime?
+  validTo       DateTime?
+  publishedAt   DateTime?
+  publishedBy   String?                @db.VarChar(150)
+
+  generatedDocuments GeneratedDocument[]
+
+  createdBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+
+  @@unique([templateId, versionNumber])
+}
+
+enum ClauseVersionStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+// Bloque de contenido reutilizable (ej. "Identificación de las partes",
+// "Remuneración", "Jornada"). Una misma cláusula puede usarse en varias
+// matrices; cada matriz decide el orden vía MatrixClause.sequence.
+model Clause {
+  id          String        @id @default(cuid())
+  code        String        @unique @db.VarChar(80)
+  name        String        @db.VarChar(200)
+  description String?       @db.VarChar(500)
+  status      OrgUnitStatus @default(ACTIVE)
+
+  versions      ClauseVersion[]
+  matrixClauses MatrixClause[]
+
+  createdBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Contenido versionado de una cláusula (HTML con tokens y {{#if}}). Nunca se
+// edita fuera de DRAFT; igual regla de vigencia que ContractTemplateVersion.
+model ClauseVersion {
+  id            String               @id @default(cuid())
+  clause        Clause               @relation(fields: [clauseId], references: [id])
+  clauseId      String
+  versionNumber Int
+  content       String               @db.Text
+  status        ClauseVersionStatus  @default(DRAFT)
+  validFrom     DateTime?
+  validTo       DateTime?
+  publishedAt   DateTime?
+  publishedBy   String?              @db.VarChar(150)
+
+  createdBy String?  @db.VarChar(150)
+  createdAt DateTime @default(now())
+
+  @@unique([clauseId, versionNumber])
+}
+
+// Asigna una cláusula a una matriz, en el orden en que debe aparecer dentro
+// del placeholder {{clauses}} de la plantilla.
+model MatrixClause {
+  id        String  @id @default(cuid())
+  matrix    ContractMatrix @relation(fields: [matrixId], references: [id], onDelete: Cascade)
+  matrixId  String
+  clause    Clause         @relation(fields: [clauseId], references: [id])
+  clauseId  String
+  sequence  Int
+  mandatory Boolean @default(true)
+
+  @@unique([matrixId, clauseId])
+}
+
+// Catálogo documental de los tokens que el motor pone a disposición de
+// plantillas y cláusulas (ej. employee.fullName, contract.startDate,
+// compensation.baseSalary). Igual que PayrollVariable: no valida en tiempo de
+// guardado que una plantilla sólo use tokens de este catálogo; eso lo hace el
+// endpoint de validación de plantilla. La resolución real vive en código
+// (engine/token-resolvers.ts), no en estas columnas.
+model DocumentTokenDefinition {
+  id           String  @id @default(cuid())
+  code         String  @unique @db.VarChar(100) // ej. "employee.fullName"
+  namespace    String  @db.VarChar(50) // ej. "employee", "contract", "company"
+  name         String  @db.VarChar(150)
+  dataType     String  @db.VarChar(20) // STRING | DATE | DECIMAL | BOOLEAN
+  description  String? @db.VarChar(300)
+  sourceEntity String? @db.VarChar(50) // documental, ej. "PERSON", "CONTRACT"
+  required     Boolean @default(false)
+  sensitive    Boolean @default(false)
+  active       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum GeneratedDocumentStatus {
+  GENERATED
+  CANCELLED
+}
+
+// Documento efectivamente emitido: congela el HTML final ya renderizado (con
+// los tokens resueltos y las cláusulas expandidas) y su hash SHA-256. Nunca
+// se regenera con datos actuales — si el colaborador cambia de sueldo, cargo
+// o dirección después, este documento conserva los valores vigentes al
+// momento en que se generó (ver GeneratedDocumentToken).
+model GeneratedDocument {
+  id             String  @id @default(cuid())
+  documentNumber String  @unique @db.VarChar(40) // ej. "CTR-2026-000123"
+
+  matrix             ContractMatrix          @relation(fields: [matrixId], references: [id])
+  matrixId           String
+  matrixCodeSnapshot String                  @db.VarChar(80)
+  templateVersion    ContractTemplateVersion @relation(fields: [templateVersionId], references: [id])
+  templateVersionId  String
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+  contract   Contract @relation(fields: [contractId], references: [id])
+  contractId String
+
+  documentType  String   @db.VarChar(30)
+  documentDate  DateTime
+  effectiveDate DateTime
+
+  generatedAt DateTime @default(now())
+  generatedBy String?  @db.VarChar(150)
+
+  status GeneratedDocumentStatus @default(GENERATED)
+
+  content     String @db.Text // HTML final, ya renderizado y congelado
+  contentHash String @db.VarChar(64) // sha256 hex del contenido
+
+  cancelledAt   DateTime?
+  cancelledBy   String?   @db.VarChar(150)
+  cancelReason  String?   @db.VarChar(300)
+
+  tokens GeneratedDocumentToken[]
+}
+
+// Valor congelado de cada token usado al generar el documento: evidencia de
+// exactamente qué dato se usó y de dónde salió, sin depender de que el
+// registro de origen no cambie después.
+model GeneratedDocumentToken {
+  id             String            @id @default(cuid())
+  document       GeneratedDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId     String
+  tokenCode      String            @db.VarChar(100)
+  rawValue       String?           @db.VarChar(500)
+  formattedValue String?           @db.VarChar(500)
+  sourceEntity   String?           @db.VarChar(50)
+  sourceRecordId String?
 }

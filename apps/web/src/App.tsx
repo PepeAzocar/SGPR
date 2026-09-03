@@ -22,6 +22,8 @@ import { PayrollPeriodDetailPage } from './pages/PayrollPeriodDetailPage';
 import { CatalogsPage } from './pages/CatalogsPage';
 import { GeoCatalogsPage } from './pages/GeoCatalogsPage';
 import { PayrollFormulasPage } from './pages/PayrollFormulasPage';
+import { ContractDocumentsPage } from './pages/ContractDocumentsPage';
+import { GeneratedDocumentPreviewPage } from './pages/GeneratedDocumentPreviewPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
 export default function App() {
@@ -90,6 +92,8 @@ export default function App() {
             <Route path="/catalogs" element={<CatalogsPage />} />
             <Route path="/geo-catalogs" element={<GeoCatalogsPage />} />
             <Route path="/payroll-formulas" element={<PayrollFormulasPage />} />
+            <Route path="/contract-documents" element={<ContractDocumentsPage />} />
+            <Route path="/contract-documents/:id/preview" element={<GeneratedDocumentPreviewPage />} />
             <Route
               path="/earnings-imputation"
               element={

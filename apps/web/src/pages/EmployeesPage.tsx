@@ -18,7 +18,6 @@ const emptyForm = {
   birthCountry: '',
   birthRegion: '',
   birthCommune: '',
-  photoUrl: '',
   email: '',
 };
 
@@ -36,7 +35,6 @@ function employeeToForm(emp: Employee): typeof emptyForm {
     birthCountry: emp.birthCountry ?? '',
     birthRegion: emp.birthRegion ?? '',
     birthCommune: emp.birthCommune ?? '',
-    photoUrl: emp.photoUrl ?? '',
     email: emp.email ?? '',
   };
 }
@@ -111,7 +109,6 @@ export function EmployeesPage() {
       birthCountry: form.birthCountry || undefined,
       birthRegion: form.birthRegion || undefined,
       birthCommune: form.birthCommune || undefined,
-      photoUrl: form.photoUrl || undefined,
       email: form.email || undefined,
     };
     try {
@@ -250,10 +247,6 @@ export function EmployeesPage() {
             </select>
           </label>
           <label>
-            Fotografía (URL)
-            <input value={form.photoUrl} onChange={(e) => setForm({ ...form, photoUrl: e.target.value })} />
-          </label>
-          <label>
             Correo
             <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </label>
@@ -264,8 +257,8 @@ export function EmployeesPage() {
       )}
 
       <p className="hint">
-        La AFP, la afiliación de salud y el ahorro previsional voluntario se administran en la
-        ficha de cada colaborador ("Afiliaciones"), ya que son datos con vigencia histórica.
+        La AFP, la afiliación de salud, el ahorro previsional voluntario y la fotografía se
+        administran en la ficha de cada colaborador ("Ver ficha").
       </p>
 
       <table className="table">

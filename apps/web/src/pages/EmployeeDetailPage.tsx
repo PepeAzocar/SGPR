@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { downloadEmployeePdf } from '../lib/employeePdf';
+import { EmployeePhotoCapture } from '../components/EmployeePhotoCapture';
 import type {
   AfpEntity,
   ContributionMode,
@@ -9,6 +10,12 @@ import type {
   HealthInstitution,
   PensionProductType,
 } from '../api/types';
+
+function employeeInitials(employee: Employee): string {
+  const first = (employee.socialName || employee.firstName || '').trim()[0] ?? '';
+  const last = (employee.lastName || '').trim()[0] ?? '';
+  return (first + last).toUpperCase() || '?';
+}
 
 type Tab = 'datos' | 'afp' | 'salud' | 'ahorro';
 
@@ -32,33 +39,45 @@ export function EmployeeDetailPage() {
 
   return (
     <div>
-      <Link to="/" className="no-print">
-        &larr; Volver a colaboradores
-      </Link>
-      <div className="page-header">
-        <h1>
-          {employee.socialName || employee.firstName} {employee.lastName}
-          <span className="hint"> · {employee.documentType} {employee.documentNumber}</span>
-        </h1>
-        <div className="row-actions no-print">
-          <button onClick={() => window.print()}>Imprimir</button>
-          <button onClick={() => downloadEmployeePdf(employee)}>Descargar PDF</button>
-        </div>
-      </div>
+      <div className="employee-photo-header">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Link to="/" className="no-print">
+            &larr; Volver a colaboradores
+          </Link>
+          <div className="page-header">
+            <h1>
+              {employee.socialName || employee.firstName} {employee.lastName}
+              <span className="hint"> · {employee.documentType} {employee.documentNumber}</span>
+            </h1>
+            <div className="row-actions no-print">
+              <button onClick={() => window.print()}>Imprimir</button>
+              <button onClick={() => downloadEmployeePdf(employee)}>Descargar PDF</button>
+            </div>
+          </div>
 
-      <div className="tabs no-print">
-        <button className={tab === 'datos' ? 'active' : ''} onClick={() => setTab('datos')}>
-          Datos personales
-        </button>
-        <button className={tab === 'afp' ? 'active' : ''} onClick={() => setTab('afp')}>
-          AFP
-        </button>
-        <button className={tab === 'salud' ? 'active' : ''} onClick={() => setTab('salud')}>
-          Salud
-        </button>
-        <button className={tab === 'ahorro' ? 'active' : ''} onClick={() => setTab('ahorro')}>
-          Ahorro previsional
-        </button>
+          <div className="tabs no-print">
+            <button className={tab === 'datos' ? 'active' : ''} onClick={() => setTab('datos')}>
+              Datos personales
+            </button>
+            <button className={tab === 'afp' ? 'active' : ''} onClick={() => setTab('afp')}>
+              AFP
+            </button>
+            <button className={tab === 'salud' ? 'active' : ''} onClick={() => setTab('salud')}>
+              Salud
+            </button>
+            <button className={tab === 'ahorro' ? 'active' : ''} onClick={() => setTab('ahorro')}>
+              Ahorro previsional
+            </button>
+          </div>
+        </div>
+        {id && (
+          <EmployeePhotoCapture
+            employeeId={id}
+            photoUrl={employee.photoUrl}
+            initials={employeeInitials(employee)}
+            onChange={load}
+          />
+        )}
       </div>
 
       {tab === 'datos' && <PersonalDataTab employee={employee} />}

@@ -8,6 +8,12 @@ export interface LegalEntity {
   effectiveFrom: string;
   effectiveTo?: string | null;
   status: OrgUnitStatus;
+  rut?: string | null;
+  legalName?: string | null;
+  address?: string | null;
+  city?: string | null;
+  legalRepresentativeName?: string | null;
+  legalRepresentativeRut?: string | null;
 }
 
 export interface BusinessUnit {
@@ -529,4 +535,139 @@ export interface PayrollFormula {
   createdAt: string;
   approvedBy?: string | null;
   approvedAt?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Motor de Documentos Contractuales ("Gestión Contractual")
+// ---------------------------------------------------------------------------
+
+export type ContractDocumentType = 'CONTRATO' | 'ANEXO' | 'CERTIFICADO';
+export type ContractMatrixStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE';
+export type TemplateVersionStatus = 'DRAFT' | 'PUBLISHED' | 'RETIRED';
+export type ClauseVersionStatus = 'DRAFT' | 'PUBLISHED' | 'RETIRED';
+export type GeneratedDocumentStatus = 'GENERATED' | 'CANCELLED';
+
+export interface ContractTemplateVersion {
+  id: string;
+  templateId: string;
+  versionNumber: number;
+  content: string;
+  status: TemplateVersionStatus;
+  validFrom?: string | null;
+  validTo?: string | null;
+  publishedAt?: string | null;
+  publishedBy?: string | null;
+  createdAt: string;
+}
+
+export interface ContractTemplate {
+  id: string;
+  code: string;
+  name: string;
+  documentType: ContractDocumentType;
+  status: OrgUnitStatus;
+  versions?: ContractTemplateVersion[];
+}
+
+export interface ClauseVersion {
+  id: string;
+  clauseId: string;
+  versionNumber: number;
+  content: string;
+  status: ClauseVersionStatus;
+  validFrom?: string | null;
+  validTo?: string | null;
+  publishedAt?: string | null;
+  publishedBy?: string | null;
+  createdAt: string;
+}
+
+export interface Clause {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  status: OrgUnitStatus;
+  versions?: ClauseVersion[];
+}
+
+export interface MatrixClause {
+  id: string;
+  matrixId: string;
+  clauseId: string;
+  clause?: Clause;
+  sequence: number;
+  mandatory: boolean;
+}
+
+export interface ContractMatrix {
+  id: string;
+  code: string;
+  name: string;
+  documentType: ContractDocumentType;
+  legalRegimeId?: string | null;
+  legalRegime?: LaborRegime | null;
+  contractTypeId?: string | null;
+  contractType?: ContractType | null;
+  templateId: string;
+  template?: ContractTemplate;
+  priority: number;
+  automaticGeneration: boolean;
+  requiresApproval: boolean;
+  requiresSignature: boolean;
+  validFrom: string;
+  validTo?: string | null;
+  status: ContractMatrixStatus;
+  clauses?: MatrixClause[];
+  createdBy?: string | null;
+  updatedBy?: string | null;
+}
+
+export type DocumentTokenDataType = 'STRING' | 'DATE' | 'DECIMAL' | 'BOOLEAN';
+
+export interface DocumentTokenDefinition {
+  id: string;
+  code: string;
+  namespace: string;
+  name: string;
+  dataType: DocumentTokenDataType;
+  description?: string | null;
+  sourceEntity?: string | null;
+  required: boolean;
+  sensitive: boolean;
+  active: boolean;
+}
+
+export interface GeneratedDocumentToken {
+  id: string;
+  documentId: string;
+  tokenCode: string;
+  rawValue?: string | null;
+  formattedValue?: string | null;
+}
+
+export interface GeneratedDocument {
+  id: string;
+  documentNumber: string;
+  matrixId: string;
+  matrix?: ContractMatrix;
+  matrixCodeSnapshot: string;
+  templateVersionId: string;
+  templateVersion?: ContractTemplateVersion;
+  employeeId: string;
+  employee?: Employee;
+  contractId: string;
+  contract?: Contract;
+  documentType: ContractDocumentType;
+  documentDate: string;
+  effectiveDate: string;
+  generatedAt: string;
+  generatedBy?: string | null;
+  status: GeneratedDocumentStatus;
+  content: string;
+  contentHash: string;
+  cancelledAt?: string | null;
+  cancelledBy?: string | null;
+  cancelReason?: string | null;
+  tokens?: GeneratedDocumentToken[];
 }

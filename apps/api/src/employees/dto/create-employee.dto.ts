@@ -75,9 +75,12 @@ export class CreateEmployeeDto {
   @MaxLength(80)
   birthCommune?: string;
 
+  // Data URL de la foto (imagen ya comprimida en base64 por el frontend,
+  // ver EmployeePhotoCapture) — no una URL externa, por eso el límite es de
+  // tamaño de archivo, no de longitud de URL.
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxLength(4_000_000)
   photoUrl?: string;
 
   @IsOptional()

@@ -59,6 +59,7 @@ const menuTree: NavNode[] = [
     link('/catalogs', 'Catálogos'),
     link('/geo-catalogs', 'Catálogos geográficos'),
     link('/payroll-formulas', 'Define Cálculo Nómina'),
+    link('/contract-documents', 'Gestión Contractual'),
   ]),
 ];
 
