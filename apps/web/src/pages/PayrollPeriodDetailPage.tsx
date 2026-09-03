@@ -1,22 +1,22 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
-import type { Payslip, PayrollPeriod } from '../api/types';
+import type { PayrollResult, PayrollPeriod } from '../api/types';
 
-interface PeriodWithPayslips extends PayrollPeriod {
-  payslips: Payslip[];
+interface PeriodWithResults extends PayrollPeriod {
+  results: PayrollResult[];
 }
 
 export function PayrollPeriodDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [period, setPeriod] = useState<PeriodWithPayslips | null>(null);
+  const [period, setPeriod] = useState<PeriodWithResults | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
     api
-      .get<PeriodWithPayslips>(`/payroll-periods/${id}`)
+      .get<PeriodWithResults>(`/payroll-periods/${id}`)
       .then(setPeriod)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Error al cargar'));
   }, [id]);
@@ -30,37 +30,51 @@ export function PayrollPeriodDetailPage() {
       <h1>
         Liquidaciones {period.month}/{period.year}
       </h1>
+      <p className="hint">
+        Se muestra sólo el resultado vigente de cada colaborador. Para ver el historial completo
+        de versiones (correcciones) de una liquidación, usa{' '}
+        <Link to="/payslip-lookup">Consulta de Liquidación</Link>.
+      </p>
       <table className="table">
         <thead>
           <tr>
             <th>Empleado</th>
+            <th>Versión</th>
             <th>Haberes</th>
             <th>Descuentos</th>
             <th>Líquido</th>
+            <th>Estado</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          {period.payslips.map((p) => (
-            <Fragment key={p.id}>
+          {period.results.map((r) => (
+            <Fragment key={r.id}>
               <tr>
                 <td>
-                  {p.employee?.firstName} {p.employee?.lastName}
-                </td>
-                <td>${Number(p.totalEarnings).toLocaleString('es-CL')}</td>
-                <td>${Number(p.totalDeductions).toLocaleString('es-CL')}</td>
-                <td>
-                  <strong>${Number(p.netPay).toLocaleString('es-CL')}</strong>
+                  {r.employee?.firstName} {r.employee?.lastName}
                 </td>
                 <td>
-                  <button onClick={() => setExpanded(expanded === p.id ? null : p.id)}>
-                    {expanded === p.id ? 'Ocultar' : 'Detalle'}
+                  #{r.resultSequence} {r.resultType === 'CORRECTION' ? '(corrección)' : ''}
+                </td>
+                <td>${Number(r.totalEarnings).toLocaleString('es-CL')}</td>
+                <td>${Number(r.totalDeductions).toLocaleString('es-CL')}</td>
+                <td>
+                  <strong>${Number(r.netAmount).toLocaleString('es-CL')}</strong>
+                </td>
+                <td>
+                  <span className={`badge ${r.status.toLowerCase()}`}>{r.status}</span>
+                </td>
+                <td className="row-actions">
+                  <button onClick={() => setExpanded(expanded === r.id ? null : r.id)}>
+                    {expanded === r.id ? 'Ocultar' : 'Detalle'}
                   </button>
+                  <Link to={`/payslip-lookup?employeeId=${r.employeeId}&payrollPeriodId=${period.id}`}>Ver ficha</Link>
                 </td>
               </tr>
-              {expanded === p.id && (
+              {expanded === r.id && (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={7}>
                     <table className="table nested">
                       <thead>
                         <tr>
@@ -70,10 +84,10 @@ export function PayrollPeriodDetailPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {p.items?.map((item) => (
+                        {r.details?.map((item) => (
                           <tr key={item.id}>
-                            <td>{item.concept.name}</td>
-                            <td>{item.concept.type === 'EARNING' ? 'Haber' : 'Descuento'}</td>
+                            <td>{item.conceptName}</td>
+                            <td>{item.conceptType === 'EARNING' ? 'Haber' : 'Descuento'}</td>
                             <td>${Number(item.amount).toLocaleString('es-CL')}</td>
                           </tr>
                         ))}
@@ -84,9 +98,9 @@ export function PayrollPeriodDetailPage() {
               )}
             </Fragment>
           ))}
-          {period.payslips.length === 0 && (
+          {period.results.length === 0 && (
             <tr>
-              <td colSpan={5} className="empty">
+              <td colSpan={7} className="empty">
                 Este período aún no tiene liquidaciones calculadas.
               </td>
             </tr>

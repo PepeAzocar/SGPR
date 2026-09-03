@@ -14,7 +14,7 @@ import { ContractsModule } from './contracts/contracts.module.js';
 import { LeavesModule } from './leaves/leaves.module.js';
 import { PayrollPeriodsModule } from './payroll-periods/payroll-periods.module.js';
 import { PayrollConceptsModule } from './payroll-concepts/payroll-concepts.module.js';
-import { PayslipsModule } from './payslips/payslips.module.js';
+import { PayrollResultsModule } from './payroll-results/payroll-results.module.js';
 import { AfpEntitiesModule } from './afp-entities/afp-entities.module.js';
 import { HealthInstitutionsModule } from './health-institutions/health-institutions.module.js';
 import { EconomicIndicatorsModule } from './economic-indicators/economic-indicators.module.js';
@@ -60,7 +60,7 @@ import { ContractDocumentsModule } from './contract-documents/contract-documents
     LeavesModule,
     PayrollPeriodsModule,
     PayrollConceptsModule,
-    PayslipsModule,
+    PayrollResultsModule,
     AfpEntitiesModule,
     HealthInstitutionsModule,
     EconomicIndicatorsModule,

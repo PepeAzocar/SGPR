@@ -84,7 +84,11 @@ export function PayrollPeriodsPage() {
               </td>
               <td className="row-actions">
                 <button disabled={busyId === p.id} onClick={() => handleCalculate(p.id)}>
-                  {busyId === p.id ? 'Calculando...' : 'Calcular liquidaciones'}
+                  {busyId === p.id
+                    ? 'Calculando...'
+                    : p.status === 'OPEN'
+                      ? 'Calcular liquidaciones'
+                      : 'Recalcular (genera corrección)'}
                 </button>
                 <Link to={`/payroll-periods/${p.id}`}>Ver liquidaciones</Link>
               </td>

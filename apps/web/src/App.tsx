@@ -24,6 +24,7 @@ import { GeoCatalogsPage } from './pages/GeoCatalogsPage';
 import { PayrollFormulasPage } from './pages/PayrollFormulasPage';
 import { ContractDocumentsPage } from './pages/ContractDocumentsPage';
 import { GeneratedDocumentPreviewPage } from './pages/GeneratedDocumentPreviewPage';
+import { PayslipLookupPage } from './pages/PayslipLookupPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
 export default function App() {
@@ -158,6 +159,7 @@ export default function App() {
                 </RequireRole>
               }
             />
+            <Route path="/payslip-lookup" element={<PayslipLookupPage />} />
           </Route>
         </Routes>
       </AuthProvider>

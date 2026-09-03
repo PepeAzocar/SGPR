@@ -54,6 +54,7 @@ const menuTree: NavNode[] = [
     link('/previred-file', 'Genera Archivo Previred', { adminOnly: true }),
     link('/social-credits', 'Créditos Sociales', { adminOnly: true }),
     link('/attendance-records', 'Reg. Atrasos e Inasistencia', { adminOnly: true }),
+    link('/payslip-lookup', 'Consulta de Liquidación'),
   ]),
   group('Utilidades del sistema', [
     link('/catalogs', 'Catálogos'),

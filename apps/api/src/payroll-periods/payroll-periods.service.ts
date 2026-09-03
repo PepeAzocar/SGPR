@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { PayrollCalculatorService } from '../payroll/chile/payroll-calculator.service.js';
 import { CreatePayrollPeriodDto } from './dto/create-payroll-period.dto.js';
 import { UpdatePayrollPeriodDto } from './dto/update-payroll-period.dto.js';
+import type { PayrollConcept } from '../generated/prisma/client.js';
+import type { PayrollDetailOrigin } from '../generated/prisma/enums.js';
 
 const SYSTEM_CONCEPT_CODES = [
   'SUELDO_BASE',
@@ -12,6 +14,12 @@ const SYSTEM_CONCEPT_CODES = [
   'AFC',
   'IMPUESTO_UNICO',
 ] as const;
+
+const resultInclude = {
+  employee: true,
+  details: { include: { concept: true } },
+  employment: true,
+};
 
 @Injectable()
 export class PayrollPeriodsService {
@@ -31,7 +39,13 @@ export class PayrollPeriodsService {
   async findOne(id: string) {
     const period = await this.prisma.payrollPeriod.findUnique({
       where: { id },
-      include: { payslips: { include: { employee: true, items: { include: { concept: true } } } } },
+      include: {
+        results: {
+          where: { isCurrent: true },
+          include: resultInclude,
+          orderBy: { employee: { lastName: 'asc' } },
+        },
+      },
     });
     if (!period) throw new NotFoundException('Período no encontrado');
     return period;
@@ -47,6 +61,13 @@ export class PayrollPeriodsService {
     return this.prisma.payrollPeriod.delete({ where: { id } });
   }
 
+  /**
+   * Calcula el período: crea un PayrollRun (REGULAR la primera vez sobre este
+   * período, CORRECTION las siguientes) y, por cada colaborador, un
+   * PayrollResult nuevo. Nunca sobrescribe un resultado ya calculado — si ya
+   * existía uno vigente, se marca SUPERSEDED/isCurrent=false y el nuevo queda
+   * enlazado vía parentResultId, con previousNetAmount/differenceAmount.
+   */
   async calculate(id: string) {
     const period = await this.prisma.payrollPeriod.findUnique({ where: { id } });
     if (!period) throw new NotFoundException('Período no encontrado');
@@ -87,108 +108,212 @@ export class PayrollPeriodsService {
         OR: [{ endDate: null }, { endDate: { gte: periodStart } }],
         employee: { status: 'ACTIVE' },
       },
-      include: { employee: true, contractType: true },
+      include: {
+        employee: true,
+        contractType: true,
+        legalEntity: true,
+        position: {
+          include: {
+            cargo: true,
+            costCenter: true,
+            department: { include: { costCenter: true } },
+          },
+        },
+      },
     });
 
-    const results = [];
-    for (const contract of contracts) {
-      const { employee } = contract;
+    const lastRun = await this.prisma.payrollRun.findFirst({
+      where: { payrollPeriodId: id },
+      orderBy: { runNumber: 'desc' },
+    });
+    const runNumber = (lastRun?.runNumber ?? 0) + 1;
+    const runType = runNumber === 1 ? 'REGULAR' : 'CORRECTION';
+    const run = await this.prisma.payrollRun.create({
+      data: {
+        payrollPeriodId: id,
+        runNumber,
+        runType,
+        correctionNumber: runNumber > 1 ? runNumber - 1 : null,
+        calculationDate: new Date(),
+        status: 'RUNNING',
+      },
+    });
 
-      // Se usa la AFP y la afiliación de salud vigentes en la fecha del período
-      // (no un dato fijo del empleado), para que las liquidaciones históricas se
-      // recalculen siempre con la comisión, fondo y plan que correspondían en ese momento.
-      const afpAffiliation = await this.prisma.employeeAfp.findFirst({
-        where: {
-          employeeId: employee.id,
-          effectiveFrom: { lte: periodEnd },
-          OR: [{ effectiveTo: null }, { effectiveTo: { gte: periodStart } }],
-        },
-        orderBy: { effectiveFrom: 'desc' },
-      });
-      if (!afpAffiliation) {
-        throw new BadRequestException(
-          `El empleado ${employee.documentNumber} no tiene afiliación AFP vigente para este período`,
-        );
+    const results: unknown[] = [];
+    try {
+      for (const contract of contracts) {
+        const { employee } = contract;
+
+        // Se usa la AFP y la afiliación de salud vigentes en la fecha del período
+        // (no un dato fijo del empleado), para que las liquidaciones históricas se
+        // recalculen siempre con la comisión, fondo y plan que correspondían en ese momento.
+        const afpAffiliation = await this.prisma.employeeAfp.findFirst({
+          where: {
+            employeeId: employee.id,
+            effectiveFrom: { lte: periodEnd },
+            OR: [{ effectiveTo: null }, { effectiveTo: { gte: periodStart } }],
+          },
+          include: { afp: true },
+          orderBy: { effectiveFrom: 'desc' },
+        });
+        if (!afpAffiliation) {
+          throw new BadRequestException(
+            `El empleado ${employee.documentNumber} no tiene afiliación AFP vigente para este período`,
+          );
+        }
+
+        const health = await this.prisma.healthAffiliation.findFirst({
+          where: {
+            employeeId: employee.id,
+            effectiveFrom: { lte: periodEnd },
+            OR: [{ effectiveTo: null }, { effectiveTo: { gte: periodStart } }],
+          },
+          include: { healthInstitution: true },
+          orderBy: { effectiveFrom: 'desc' },
+        });
+        if (!health) {
+          throw new BadRequestException(
+            `El empleado ${employee.documentNumber} no tiene afiliación de salud vigente para este período`,
+          );
+        }
+
+        const afpTotalRatePct =
+          Number(afpAffiliation.mandatoryContributionPct) +
+          Number(afpAffiliation.afpCommissionPct ?? 0) +
+          Number(afpAffiliation.additionalContributionPct ?? 0);
+
+        const calc = this.calculator.calculate({
+          baseSalary: Number(contract.baseSalary),
+          otherTaxableEarnings: 0,
+          nonTaxableEarnings: 0,
+          contractType: contract.contractType.code,
+          afpWorkerRatePct: afpTotalRatePct,
+          isFonasa: health.healthInstitution.type === 'FONASA',
+          isapreMonthlyPlanClp: health.planUfValue
+            ? Number(health.planUfValue) * Number(indicator.ufValue)
+            : null,
+          indicators: {
+            ufValue: Number(indicator.ufValue),
+            utmValue: Number(indicator.utmValue),
+            minWage: Number(indicator.minWage),
+            afpHealthCapUf: Number(indicator.afpHealthCapUf),
+          },
+          taxBrackets: brackets.map((b) => ({
+            fromUtm: Number(b.fromUtm),
+            toUtm: b.toUtm === null ? null : Number(b.toUtm),
+            factor: Number(b.factor),
+            deductionUtm: Number(b.deductionUtm),
+          })),
+        });
+
+        const isIndefinido = contract.contractType.code === 'INDEFINIDO';
+        const costCenter = contract.position.costCenter ?? contract.position.department?.costCenter ?? null;
+
+        const detailRows: Array<{
+          concept: PayrollConcept;
+          amount: number;
+          taxable?: boolean;
+          pensionable?: boolean;
+          healthTaxable?: boolean;
+          unemploymentTaxable?: boolean;
+          incomeTaxable?: boolean;
+          origin: PayrollDetailOrigin;
+        }> = [
+          { concept: concepts.SUELDO_BASE, amount: Number(contract.baseSalary), taxable: true, pensionable: true, healthTaxable: true, unemploymentTaxable: true, incomeTaxable: true, origin: 'CONTRACT' },
+          { concept: concepts.GRATIFICACION, amount: calc.gratificacionLegal, taxable: true, pensionable: true, healthTaxable: true, unemploymentTaxable: true, incomeTaxable: true, origin: 'SYSTEM_CALCULATION' },
+          { concept: concepts.AFP, amount: calc.afpDeduction, origin: 'SYSTEM_CALCULATION' },
+          { concept: concepts.SALUD, amount: calc.healthDeduction, origin: 'SYSTEM_CALCULATION' },
+          ...(isIndefinido ? [{ concept: concepts.AFC, amount: calc.afcDeduction, origin: 'SYSTEM_CALCULATION' as PayrollDetailOrigin }] : []),
+          { concept: concepts.IMPUESTO_UNICO, amount: calc.incomeTax, origin: 'SYSTEM_CALCULATION' },
+        ];
+
+        const previous = await this.prisma.payrollResult.findFirst({
+          where: { employeeId: employee.id, payrollPeriodId: id, isCurrent: true },
+        });
+        const resultSequence = (previous?.resultSequence ?? 0) + 1;
+        const resultType = previous ? 'CORRECTION' : 'REGULAR';
+
+        const result = await this.prisma.$transaction(async (tx) => {
+          if (previous) {
+            await tx.payrollResult.update({
+              where: { id: previous.id },
+              data: { isCurrent: false, status: 'SUPERSEDED' },
+            });
+          }
+          return tx.payrollResult.create({
+            data: {
+              payrollRunId: run.id,
+              payrollPeriodId: id,
+              employeeId: employee.id,
+              contractId: contract.id,
+              resultSequence,
+              resultType,
+              parentResultId: previous?.id,
+              calculationDate: new Date(),
+              totalEarnings: calc.totalEarnings,
+              taxableEarnings: calc.taxableEarnings,
+              nonTaxableEarnings: 0,
+              totalDeductions: calc.totalDeductions,
+              totalLegalDeductions: calc.totalDeductions,
+              totalOtherDeductions: 0,
+              totalTaxable: calc.taxableIncomeAfterSocialSecurity,
+              totalPensionable: calc.taxableBaseCapped,
+              totalHealthBase: calc.taxableBaseCapped,
+              netAmount: calc.netPay,
+              previousNetAmount: previous?.netAmount,
+              differenceAmount: previous ? calc.netPay - Number(previous.netAmount) : null,
+              status: 'CALCULATED',
+              isCurrent: true,
+              details: {
+                create: detailRows.map((row, index) => ({
+                  conceptId: row.concept.id,
+                  conceptCode: row.concept.code,
+                  conceptName: row.concept.name,
+                  conceptType: row.concept.type,
+                  sequence: (index + 1) * 10,
+                  amount: row.amount,
+                  taxable: row.taxable ?? false,
+                  pensionable: row.pensionable ?? false,
+                  healthTaxable: row.healthTaxable ?? false,
+                  unemploymentTaxable: row.unemploymentTaxable ?? false,
+                  incomeTaxable: row.incomeTaxable ?? false,
+                  origin: row.origin,
+                })),
+              },
+              employment: {
+                create: {
+                  legalEntityId: contract.legalEntityId,
+                  legalEntityName: contract.legalEntity.name,
+                  costCenterId: costCenter?.id,
+                  costCenterName: costCenter?.name,
+                  departmentId: contract.position.departmentId,
+                  departmentName: contract.position.department?.name,
+                  positionId: contract.positionId,
+                  positionTitle: contract.position.title,
+                  contractTypeId: contract.contractTypeId,
+                  contractTypeName: contract.contractType.name,
+                  weeklyHours: contract.weeklyHours,
+                  baseSalary: contract.baseSalary,
+                  validFrom: periodStart,
+                  validTo: periodEnd,
+                },
+              },
+            },
+            include: resultInclude,
+          });
+        });
+
+        results.push(result);
       }
 
-      const health = await this.prisma.healthAffiliation.findFirst({
-        where: {
-          employeeId: employee.id,
-          effectiveFrom: { lte: periodEnd },
-          OR: [{ effectiveTo: null }, { effectiveTo: { gte: periodStart } }],
-        },
-        include: { healthInstitution: true },
-        orderBy: { effectiveFrom: 'desc' },
-      });
-      if (!health) {
-        throw new BadRequestException(
-          `El empleado ${employee.documentNumber} no tiene afiliación de salud vigente para este período`,
-        );
-      }
-
-      const afpTotalRatePct =
-        Number(afpAffiliation.mandatoryContributionPct) +
-        Number(afpAffiliation.afpCommissionPct ?? 0) +
-        Number(afpAffiliation.additionalContributionPct ?? 0);
-
-      const calc = this.calculator.calculate({
-        baseSalary: Number(contract.baseSalary),
-        otherTaxableEarnings: 0,
-        nonTaxableEarnings: 0,
-        contractType: contract.contractType.code,
-        afpWorkerRatePct: afpTotalRatePct,
-        isFonasa: health.healthInstitution.type === 'FONASA',
-        isapreMonthlyPlanClp: health.planUfValue
-          ? Number(health.planUfValue) * Number(indicator.ufValue)
-          : null,
-        indicators: {
-          ufValue: Number(indicator.ufValue),
-          utmValue: Number(indicator.utmValue),
-          minWage: Number(indicator.minWage),
-          afpHealthCapUf: Number(indicator.afpHealthCapUf),
-        },
-        taxBrackets: brackets.map((b) => ({
-          fromUtm: Number(b.fromUtm),
-          toUtm: b.toUtm === null ? null : Number(b.toUtm),
-          factor: Number(b.factor),
-          deductionUtm: Number(b.deductionUtm),
-        })),
-      });
-
-      const payslip = await this.prisma.payslip.upsert({
-        where: { employeeId_periodId: { employeeId: employee.id, periodId: period.id } },
-        create: {
-          employeeId: employee.id,
-          periodId: period.id,
-          totalEarnings: calc.totalEarnings,
-          totalDeductions: calc.totalDeductions,
-          netPay: calc.netPay,
-        },
-        update: {
-          totalEarnings: calc.totalEarnings,
-          totalDeductions: calc.totalDeductions,
-          netPay: calc.netPay,
-        },
-      });
-
-      await this.prisma.payslipItem.deleteMany({ where: { payslipId: payslip.id } });
-      await this.prisma.payslipItem.createMany({
-        data: [
-          { payslipId: payslip.id, conceptId: concepts.SUELDO_BASE.id, amount: contract.baseSalary },
-          { payslipId: payslip.id, conceptId: concepts.GRATIFICACION.id, amount: calc.gratificacionLegal },
-          { payslipId: payslip.id, conceptId: concepts.AFP.id, amount: calc.afpDeduction },
-          { payslipId: payslip.id, conceptId: concepts.SALUD.id, amount: calc.healthDeduction },
-          { payslipId: payslip.id, conceptId: concepts.AFC.id, amount: calc.afcDeduction },
-          { payslipId: payslip.id, conceptId: concepts.IMPUESTO_UNICO.id, amount: calc.incomeTax },
-        ],
-      });
-
-      results.push(payslip);
+      await this.prisma.payrollRun.update({ where: { id: run.id }, data: { status: 'COMPLETED' } });
+      await this.prisma.payrollPeriod.update({ where: { id: period.id }, data: { status: 'CALCULATED' } });
+    } catch (err) {
+      await this.prisma.payrollRun.update({ where: { id: run.id }, data: { status: 'FAILED' } });
+      throw err;
     }
 
-    await this.prisma.payrollPeriod.update({ where: { id: period.id }, data: { status: 'CALCULATED' } });
-
-    return { calculated: results.length, payslips: results };
+    return { runId: run.id, runNumber, runType, calculated: results.length, results };
   }
 
   private async ensureSystemConcepts() {

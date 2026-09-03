@@ -60,7 +60,7 @@ export class EmployeesService {
       await Promise.all([
         this.prisma.contract.count({ where: { employeeId: id } }),
         this.prisma.leave.count({ where: { employeeId: id } }),
-        this.prisma.payslip.count({ where: { employeeId: id } }),
+        this.prisma.payrollResult.count({ where: { employeeId: id } }),
         this.prisma.employeeAfp.count({ where: { employeeId: id } }),
         this.prisma.healthAffiliation.count({ where: { employeeId: id } }),
         this.prisma.employeePensionSaving.count({ where: { employeeId: id } }),

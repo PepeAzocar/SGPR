@@ -359,10 +359,10 @@ model Employee {
   events         EmployeeEvent[]
   bankAccounts   EmployeeBankAccount[]
   leaves         Leave[]
-  payslips       Payslip[]
   user           User?
   managedCostCenters CostCenter[] @relation("CostCenterManager")
   generatedDocuments GeneratedDocument[]
+  payrollResults PayrollResult[]
 
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -460,6 +460,7 @@ model Contract {
   updatedAt      DateTime     @updatedAt
 
   generatedDocuments GeneratedDocument[]
+  payrollResults PayrollResult[]
 
   @@unique([legalEntityId, contractNumber])
 }
@@ -907,13 +908,15 @@ enum PayrollPeriodStatus {
 }
 
 model PayrollPeriod {
-  id        String              @id @default(cuid())
-  month     Int // 1-12
-  year      Int
-  status    PayrollPeriodStatus @default(OPEN)
-  payslips  Payslip[]
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  id          String              @id @default(cuid())
+  month       Int // 1-12
+  year        Int
+  status      PayrollPeriodStatus @default(OPEN)
+  paymentDate DateTime?
+  runs        PayrollRun[]
+  results     PayrollResult[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 
   @@unique([month, year])
 }
@@ -937,36 +940,207 @@ model PayrollConcept {
   type      ConceptType
   category  ConceptCategory
   isSystem  Boolean         @default(false) // conceptos calculados automáticamente por el sistema
-  items     PayslipItem[]
+  details   PayrollResultDetail[]
   formulas  PayrollFormula[]
 }
 
-model Payslip {
-  id              String        @id @default(cuid())
-  employee        Employee      @relation(fields: [employeeId], references: [id])
-  employeeId      String
-  period          PayrollPeriod @relation(fields: [periodId], references: [id])
-  periodId        String
+// ---------------------------------------------------------------------------
+// Resultados de nómina versionados (inspirado en RT/WPBP/BT de SAP)
+//
+// Regla central: un PayrollResult ya calculado NUNCA se edita ni se
+// sobrescribe. Cada corrida de cálculo (PayrollRun) crea, por cada
+// colaborador, un PayrollResult nuevo con resultSequence+1; si ya existía un
+// resultado vigente (isCurrent=true) para ese colaborador+período, éste pasa
+// a SUPERSEDED/isCurrent=false y el nuevo queda enlazado vía parentResultId.
+// Nunca se borra el anterior: es la única forma de saber qué se calculó
+// antes, cuánta fue la diferencia, y de auditar la corrección.
+// ---------------------------------------------------------------------------
 
-  totalEarnings   Decimal       @db.Decimal(12, 2) @default(0)
-  totalDeductions Decimal       @db.Decimal(12, 2) @default(0)
-  netPay          Decimal       @db.Decimal(12, 2) @default(0)
-
-  items           PayslipItem[]
-
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  @@unique([employeeId, periodId])
+enum PayrollRunType {
+  REGULAR
+  CORRECTION
+  RETROACTIVE // reservado: no hay hoy motor de recálculo retroactivo de períodos pasados
+  OFF_CYCLE
 }
 
-model PayslipItem {
-  id         String         @id @default(cuid())
-  payslip    Payslip        @relation(fields: [payslipId], references: [id], onDelete: Cascade)
-  payslipId  String
-  concept    PayrollConcept @relation(fields: [conceptId], references: [id])
-  conceptId  String
-  amount     Decimal        @db.Decimal(12, 2)
+enum PayrollRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model PayrollRun {
+  id                String            @id @default(cuid())
+  payrollPeriod     PayrollPeriod     @relation(fields: [payrollPeriodId], references: [id])
+  payrollPeriodId   String
+  runNumber         Int
+  runType           PayrollRunType
+  correctionNumber  Int?
+  description       String?           @db.VarChar(255)
+  calculationDate   DateTime?
+  status            PayrollRunStatus  @default(RUNNING)
+
+  parent            PayrollRun?       @relation("RunToParent", fields: [parentRunId], references: [id])
+  parentRunId       String?
+  children          PayrollRun[]      @relation("RunToParent")
+
+  results           PayrollResult[]
+
+  createdBy         String?           @db.VarChar(150)
+  createdAt         DateTime          @default(now())
+
+  @@unique([payrollPeriodId, runNumber])
+}
+
+enum PayrollResultStatus {
+  CALCULATED
+  SUPERSEDED
+  FINAL
+  CANCELLED
+}
+
+// Sólo FULL está implementado (recalcula todo desde cero). DIFFERENCE queda
+// reservado para cuando exista un modo de corrección que sólo calcule el
+// delta contra el resultado anterior en vez de recalcular todo.
+enum PayrollCalculationMode {
+  FULL
+  DIFFERENCE
+}
+
+model PayrollResult {
+  id                      String                 @id @default(cuid())
+
+  payrollRun              PayrollRun             @relation(fields: [payrollRunId], references: [id])
+  payrollRunId            String
+  payrollPeriod           PayrollPeriod          @relation(fields: [payrollPeriodId], references: [id])
+  payrollPeriodId         String
+  employee                Employee               @relation(fields: [employeeId], references: [id])
+  employeeId              String
+  contract                Contract               @relation(fields: [contractId], references: [id])
+  contractId              String
+
+  resultSequence          Int // 1, 2, 3... por colaborador+período; nunca se reutiliza ni se sobrescribe
+  resultType              PayrollRunType
+
+  parent                  PayrollResult?         @relation("ResultToParent", fields: [parentResultId], references: [id])
+  parentResultId          String?
+  children                PayrollResult[]        @relation("ResultToParent")
+
+  effectiveDate           DateTime?
+  calculationDate         DateTime
+  calculationMode         PayrollCalculationMode @default(FULL)
+  currencyCode            String                 @default("CLP") @db.VarChar(3)
+
+  totalEarnings           Decimal                @db.Decimal(18, 2) @default(0)
+  taxableEarnings         Decimal                @db.Decimal(18, 2) @default(0)
+  nonTaxableEarnings      Decimal                @db.Decimal(18, 2) @default(0)
+
+  totalDeductions         Decimal                @db.Decimal(18, 2) @default(0)
+  totalLegalDeductions    Decimal                @db.Decimal(18, 2) @default(0)
+  totalOtherDeductions    Decimal                @db.Decimal(18, 2) @default(0)
+
+  totalTaxable            Decimal                @db.Decimal(18, 2) @default(0) // base impuesto único
+  totalPensionable        Decimal                @db.Decimal(18, 2) @default(0) // base tope AFP
+  totalHealthBase         Decimal                @db.Decimal(18, 2) @default(0) // base tope salud
+
+  netAmount               Decimal                @db.Decimal(18, 2) @default(0)
+  previousNetAmount       Decimal?               @db.Decimal(18, 2) // líquido del resultado anterior, si es una corrección
+  differenceAmount        Decimal?               @db.Decimal(18, 2) // netAmount - previousNetAmount
+
+  status                  PayrollResultStatus    @default(CALCULATED)
+  isCurrent               Boolean                @default(true) // sólo un resultado por colaborador+período puede ser el vigente
+
+  details                 PayrollResultDetail[]
+  employment              PayrollResultEmployment?
+
+  createdBy               String?                @db.VarChar(150)
+  createdAt               DateTime               @default(now())
+
+  @@unique([employeeId, payrollPeriodId, resultSequence])
+}
+
+// De dónde salió el monto de un concepto calculado. Hoy el motor sólo
+// produce CONTRACT (sueldo base, tal cual está en el contrato) y
+// SYSTEM_CALCULATION (gratificación, AFP, salud, AFC, impuesto único); el
+// resto queda declarado para cuando existan movimientos variables,
+// ausencias o correcciones manuales que alimenten al cálculo.
+enum PayrollDetailOrigin {
+  CONTRACT
+  PERSON_MASTER
+  RECURRING_MOVEMENT
+  VARIABLE_MOVEMENT
+  ABSENCE
+  ATTENDANCE
+  SYSTEM_CALCULATION
+  RETROACTIVE
+  MANUAL
+  CORRECTION
+}
+
+// Equivalente conceptual a la RT (Results Table) de SAP: un concepto
+// calculado dentro de un PayrollResult. code/name/type se congelan aparte
+// del FK para que el detalle histórico no cambie si el concepto se
+// renombra después.
+model PayrollResultDetail {
+  id                    String               @id @default(cuid())
+  payrollResult         PayrollResult        @relation(fields: [payrollResultId], references: [id], onDelete: Cascade)
+  payrollResultId       String
+
+  concept               PayrollConcept       @relation(fields: [conceptId], references: [id])
+  conceptId             String
+  conceptCode           String               @db.VarChar(30)
+  conceptName           String               @db.VarChar(200)
+  conceptType           ConceptType
+
+  sequence              Int?
+  quantity              Decimal?             @db.Decimal(18, 6)
+  rate                  Decimal?             @db.Decimal(18, 6)
+  baseAmount            Decimal?             @db.Decimal(18, 2)
+  amount                Decimal              @db.Decimal(18, 2)
+
+  taxable               Boolean              @default(false)
+  pensionable           Boolean              @default(false)
+  healthTaxable         Boolean              @default(false)
+  unemploymentTaxable   Boolean              @default(false)
+  incomeTaxable         Boolean              @default(false)
+  employerCost          Boolean              @default(false)
+
+  origin                PayrollDetailOrigin?
+  sourceRecordId        String?
+
+  createdAt             DateTime             @default(now())
+}
+
+// Fotografía contractual/organizacional usada para este cálculo específico
+// (inspirada en WPBP de SAP): una liquidación histórica nunca debe
+// depender de consultar la ficha/posición ACTUAL del colaborador. Los ids
+// de organización se guardan como texto suelto (sin relación Prisma) junto
+// a su nombre ya congelado — a propósito, para no bloquear con FK el
+// borrado futuro de un centro de costo/cargo antiguo, y para no depender de
+// un join para mostrar la liquidación.
+model PayrollResultEmployment {
+  id                String        @id @default(cuid())
+  payrollResult     PayrollResult @relation(fields: [payrollResultId], references: [id], onDelete: Cascade)
+  payrollResultId   String        @unique
+
+  legalEntityId     String?
+  legalEntityName   String?       @db.VarChar(150)
+  costCenterId      String?
+  costCenterName    String?       @db.VarChar(150)
+  departmentId      String?
+  departmentName    String?       @db.VarChar(150)
+  positionId        String?
+  positionTitle     String?       @db.VarChar(200)
+  contractTypeId    String?
+  contractTypeName  String?       @db.VarChar(100)
+
+  weeklyHours       Decimal?      @db.Decimal(8, 2)
+  baseSalary        Decimal?      @db.Decimal(18, 2)
+
+  validFrom         DateTime?
+  validTo           DateTime? // hoy siempre = fin del período; sin soporte de tramos intra-mes todavía
+
+  createdAt         DateTime      @default(now())
 }
 
 // ---------------------------------------------------------------------------

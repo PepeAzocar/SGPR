@@ -387,6 +387,7 @@ export interface PayrollPeriod {
   month: number;
   year: number;
   status: 'OPEN' | 'CALCULATED' | 'CLOSED' | 'PAID';
+  paymentDate?: string | null;
 }
 
 export interface PayrollConcept {
@@ -398,22 +399,123 @@ export interface PayrollConcept {
   isSystem?: boolean;
 }
 
-export interface PayslipItem {
+// ---------------------------------------------------------------------------
+// Resultados de nómina versionados (PayrollRun/PayrollResult) — nunca se
+// sobrescriben; una corrección crea un resultado nuevo y dejar el anterior
+// como SUPERSEDED, conservando ambos.
+// ---------------------------------------------------------------------------
+
+export type PayrollRunType = 'REGULAR' | 'CORRECTION' | 'RETROACTIVE' | 'OFF_CYCLE';
+export type PayrollRunStatus = 'RUNNING' | 'COMPLETED' | 'FAILED';
+export type PayrollResultStatus = 'CALCULATED' | 'SUPERSEDED' | 'FINAL' | 'CANCELLED';
+export type PayrollCalculationMode = 'FULL' | 'DIFFERENCE';
+export type PayrollDetailOrigin =
+  | 'CONTRACT'
+  | 'PERSON_MASTER'
+  | 'RECURRING_MOVEMENT'
+  | 'VARIABLE_MOVEMENT'
+  | 'ABSENCE'
+  | 'ATTENDANCE'
+  | 'SYSTEM_CALCULATION'
+  | 'RETROACTIVE'
+  | 'MANUAL'
+  | 'CORRECTION';
+
+export interface PayrollRun {
   id: string;
-  amount: string;
-  concept: PayrollConcept;
+  payrollPeriodId: string;
+  runNumber: number;
+  runType: PayrollRunType;
+  correctionNumber?: number | null;
+  description?: string | null;
+  calculationDate?: string | null;
+  status: PayrollRunStatus;
+  parentRunId?: string | null;
+  createdAt: string;
 }
 
-export interface Payslip {
+export interface PayrollResultDetail {
   id: string;
+  payrollResultId: string;
+  conceptId: string;
+  conceptCode: string;
+  conceptName: string;
+  conceptType: 'EARNING' | 'DEDUCTION';
+  concept?: PayrollConcept;
+  sequence?: number | null;
+  quantity?: string | null;
+  rate?: string | null;
+  baseAmount?: string | null;
+  amount: string;
+  taxable: boolean;
+  pensionable: boolean;
+  healthTaxable: boolean;
+  unemploymentTaxable: boolean;
+  incomeTaxable: boolean;
+  employerCost: boolean;
+  origin?: PayrollDetailOrigin | null;
+  sourceRecordId?: string | null;
+}
+
+export interface PayrollResultEmployment {
+  id: string;
+  payrollResultId: string;
+  legalEntityId?: string | null;
+  legalEntityName?: string | null;
+  costCenterId?: string | null;
+  costCenterName?: string | null;
+  departmentId?: string | null;
+  departmentName?: string | null;
+  positionId?: string | null;
+  positionTitle?: string | null;
+  contractTypeId?: string | null;
+  contractTypeName?: string | null;
+  weeklyHours?: string | null;
+  baseSalary?: string | null;
+  validFrom?: string | null;
+  validTo?: string | null;
+}
+
+export interface PayrollResult {
+  id: string;
+  payrollRunId: string;
+  payrollRun?: PayrollRun;
+  payrollPeriodId: string;
+  payrollPeriod?: PayrollPeriod;
   employeeId: string;
-  periodId: string;
-  totalEarnings: string;
-  totalDeductions: string;
-  netPay: string;
   employee?: Employee;
-  period?: PayrollPeriod;
-  items?: PayslipItem[];
+  contractId: string;
+  contract?: Contract;
+
+  resultSequence: number;
+  resultType: PayrollRunType;
+  parentResultId?: string | null;
+  parent?: PayrollResult | null;
+
+  effectiveDate?: string | null;
+  calculationDate: string;
+  calculationMode: PayrollCalculationMode;
+  currencyCode: string;
+
+  totalEarnings: string;
+  taxableEarnings: string;
+  nonTaxableEarnings: string;
+  totalDeductions: string;
+  totalLegalDeductions: string;
+  totalOtherDeductions: string;
+  totalTaxable: string;
+  totalPensionable: string;
+  totalHealthBase: string;
+  netAmount: string;
+  previousNetAmount?: string | null;
+  differenceAmount?: string | null;
+
+  status: PayrollResultStatus;
+  isCurrent: boolean;
+
+  details?: PayrollResultDetail[];
+  employment?: PayrollResultEmployment | null;
+  createdAt: string;
 }
 
 export interface Country {
